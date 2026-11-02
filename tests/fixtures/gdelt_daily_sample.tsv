@@ -1,0 +1,7 @@
+1001	20261030	202610	2026	2026.8	IRN	IRAN	IRN																		1	190	190	19	4	-10.0	400	30	500	-9.0															1	Tehran, Iran	IR	IR	35.7	51.4	IR	20261030	https://example.com/iran-strike
+1002	20261101	202611	2026	2026.8	UKR	UKRAINE	UKR																		1	141	140	14	4	-5.0	20	4	20	-4.0															1	Kyiv, Ukraine	UP	UP	50.4	30.5	UP	20261101	https://example.com/event/1002
+1003	20261031	202610	2026	2026.8	USA	UNITED STATES	USA																		1	190	190	19	4	-8.0	100	12	120	-6.0															1	Washington, United States	US	US	38.9	-77.0	US	20261031	https://example.com/event/1003
+1004	20261101	202611	2026	2026.8																					1	190	190	19	4	-9.0	50	2	50	-8.0															1	Tehran, Iran	IR	IR	35.7	51.4	IR	20261101	https://example.com/event/1004
+1005	20261101	202611	2026	2026.8																					0	190	190	19	4	-9.0	50	20	50	-8.0															1	Tehran, Iran	IR	IR	35.7	51.4	IR	20261101	https://example.com/event/1005
+1006	20261101	202611	2026	2026.8																					1	110	110	11	4	-2.0	50	3	50	-3.0															1	Paris, France	FR	FR	48.8	2.3	FR	20261101	https://example.com/event/1006
+1007	20261101	202611	2026	2026.8																					1	141	140	14	4	-4.0	50	4	50	-5.0															1	New Delhi, India	IN	IN	28.6	77.2	IN	20261101	https://example.com/event/1007
