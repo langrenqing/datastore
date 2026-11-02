@@ -1,0 +1,22 @@
+{
+  "chart": {
+    "result": [
+      {
+        "meta": {"symbol": "GC=F", "currency": "USD"},
+        "timestamp": [1735689600, 1735776000, 1735862400],
+        "indicators": {
+          "quote": [
+            {
+              "open": [2620.0, 2635.0, null],
+              "high": [2640.0, 2650.0, null],
+              "low": [2610.0, 2625.0, null],
+              "close": [2635.0, 2645.0, null],
+              "volume": [12000, 15000, null]
+            }
+          ]
+        }
+      }
+    ],
+    "error": null
+  }
+}

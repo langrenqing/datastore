@@ -1,0 +1,16 @@
+# Baseline: initial commit b812749 (before this change)
+
+$ git show --stat --oneline b812749
+b812749 Initial commit
+ .gitignore |  17 ++++++
+ LICENSE    | 201 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ README.md  |   2 +
+ 3 files changed, 220 insertions(+)
+
+$ git ls-tree -r --name-only b812749
+.gitignore
+LICENSE
+README.md
+
+说明：基线仓库仅包含 README/LICENSE/.gitignore，没有任何应用、可视化或图表代码。
+这是全新功能（greenfield），不存在可截图的旧版界面。
