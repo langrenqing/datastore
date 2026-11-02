@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 import pytest
@@ -41,7 +42,7 @@ def test_parse_domestic_rows():
 
 
 def test_parse_sge_payload_row_order():
-    payload = __import__("json").loads(fixture_text("sge_au9999.json"))
+    payload = json.loads(fixture_text("sge_au9999.json"))
     bars = parse_sge_payload(payload)
     assert len(bars) == 3
     last = bars[-1]
@@ -62,8 +63,6 @@ def test_parse_sge_rejects_empty_payload():
 
 
 def test_parse_yahoo_payload_skips_null_close():
-    import json
-
     payload = json.loads(fixture_text("yahoo_gc.json"))
     bars = parse_yahoo_payload(payload)
     assert [bar.date for bar in bars] == [date(2025, 1, 1), date(2025, 1, 2)]

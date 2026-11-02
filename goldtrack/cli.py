@@ -54,6 +54,8 @@ def _parse_date(value: str) -> date:
 
 def _parse_symbols(value: str) -> list[str]:
     symbols = [item.strip().upper() for item in value.split(",") if item.strip()]
+    if not symbols:
+        raise argparse.ArgumentTypeError("至少指定一个品种")
     unknown = [symbol for symbol in symbols if symbol not in INSTRUMENTS]
     if unknown:
         raise argparse.ArgumentTypeError(
@@ -84,7 +86,8 @@ def _clean_records(records: Sequence[dict]) -> list[dict]:
 
 
 def _db(args) -> Database:
-    return Database(Path(args.db))
+    # Read-only commands also open the schema so a fresh checkout never crashes.
+    return Database(Path(args.db)).init(INSTRUMENTS.values())
 
 
 def _configure_logging(verbose: bool) -> None:
@@ -97,7 +100,6 @@ def _configure_logging(verbose: bool) -> None:
 
 def cmd_init(args) -> int:
     db = _db(args)
-    db.init(INSTRUMENTS.values())
     print(f"数据库已初始化: {db.path}")
     return 0
 

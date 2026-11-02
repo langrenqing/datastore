@@ -1,7 +1,5 @@
 from datetime import date
 
-import pytest
-
 import goldtrack.fetch as fetch_module
 from goldtrack.db import Database
 from goldtrack.fetch import collect_instrument

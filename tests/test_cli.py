@@ -57,6 +57,17 @@ def test_cli_indicators_json(tmp_path, capsys):
     assert records[-1]["trend"] == "多头"
 
 
+def test_cli_read_commands_on_empty_db(tmp_path, capsys):
+    db_path = tmp_path / "empty.db"
+    assert main(["--db", str(db_path), "query", "--symbol", "XAU"]) == 0
+    assert "没有查询到数据" in capsys.readouterr().out
+
+    assert main(["--db", str(db_path), "report", "--symbols", "XAU"]) == 0
+    assert "暂无数据" in capsys.readouterr().out
+
+    assert main(["--db", str(db_path), "indicators", "--symbol", "XAU"]) == 1
+
+
 def test_cli_report_and_sources(tmp_path, capsys):
     db_path = tmp_path / "gold.db"
     seed(db_path)
