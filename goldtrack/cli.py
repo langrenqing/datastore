@@ -35,6 +35,16 @@ def _positive_int(value: str) -> int:
     return number
 
 
+def _non_negative_float(value: str) -> float:
+    try:
+        number = float(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"应为非负数字: {value}") from None
+    if number < 0:
+        raise argparse.ArgumentTypeError(f"应为非负数字: {value}")
+    return number
+
+
 def _parse_date(value: str) -> date:
     try:
         return date.fromisoformat(value)
@@ -312,8 +322,8 @@ def build_parser() -> argparse.ArgumentParser:
         sub.add_argument("--full", action="store_true", help="全量重新采集（默认增量）")
         sub.add_argument("--start", type=_parse_date, help="起始日期 YYYY-MM-DD")
         sub.add_argument("--end", type=_parse_date, help="结束日期 YYYY-MM-DD")
-        sub.add_argument("--retries", type=int, default=3, help="每个数据源重试次数")
-        sub.add_argument("--retry-delay", type=float, default=1.0, help="首次重试等待秒数")
+        sub.add_argument("--retries", type=_positive_int, default=3, help="每个数据源重试次数")
+        sub.add_argument("--retry-delay", type=_non_negative_float, default=1.0, help="首次重试等待秒数")
 
     fetch_parser = subparsers.add_parser("fetch", help="采集日线数据入库")
     add_fetch_options(fetch_parser)
