@@ -838,6 +838,15 @@ function fillSelect(select, options, selected) {
   if (selected !== undefined && selected !== null) select.value = String(selected);
 }
 
+function syncRangeButtons(selector, days, custom) {
+  $$(`${selector} button`).forEach((button) => {
+    button.classList.toggle(
+      'is-active',
+      !custom && Number(button.dataset.days) === Number(days)
+    );
+  });
+}
+
 function populateControls() {
   const meta = state.meta;
   const instrumentOptions = meta.instruments.map((instrument) => ({
@@ -895,6 +904,7 @@ async function loadPrices() {
     const data = await api(`/api/prices?${params}`);
     renderPriceStats(data);
     renderPriceChart(data);
+    syncRangeButtons('#price-range', state.priceDays, state.priceCustom);
     state.loaded.prices = true;
     $('#price-note').dataset.loaded = '1';
   } catch (error) {
@@ -918,6 +928,7 @@ async function loadOverlay() {
     renderOverlayStats(data);
     renderOverlayChart(data);
     renderOverlayLegend(data);
+    syncRangeButtons('#overlay-range', state.overlayDays, state.overlayCustom);
     state.loaded.overlay = true;
   } catch (error) {
     toast(`事件叠加加载失败：${error.message}`);
@@ -1098,7 +1109,6 @@ async function submitEvents(event) {
     }
     payload.start = start;
     payload.end = end;
-    payload.days = span;
   }
   await submitJob(payload);
 }
