@@ -489,7 +489,7 @@ def _instrument_runs(runs: Sequence[dict], symbol: str):
     last_success = None
     last_failure = None
     for run in runs:
-        if run["kind"] != "prices":
+        if run["kind"] != "prices" or run["status"] in ("queued", "running"):
             continue
         params = run.get("params") or {}
         if symbol not in (params.get("symbols") or []):
