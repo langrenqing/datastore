@@ -2,9 +2,20 @@ import io
 import zipfile
 from datetime import date
 
+import pytest
+import requests
+
 from conftest import fixture_text
 
-from goldtrack.events.gdelt import build_events, parse_export, parse_export_bytes
+from goldtrack.events.gdelt import (
+    GdeltError,
+    GdeltPermanentError,
+    build_events,
+    fetch_export,
+    is_retryable,
+    parse_export,
+    parse_export_bytes,
+)
 
 
 def sample_rows():
@@ -128,3 +139,41 @@ def test_build_events_respects_thresholds():
 def test_build_events_all_countries_keeps_diplomatic_friction():
     events = build_events(sample_rows(), date(2026, 11, 2), all_countries=True)
     assert "1006" in {event.source_event_id for event in events}
+
+
+class _FakeResponse:
+    def __init__(self, status_code):
+        self.status_code = status_code
+        self.content = b""
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"HTTP {self.status_code}")
+
+
+class _FakeSession:
+    def __init__(self, status_code):
+        self.status_code = status_code
+        self.calls = 0
+
+    def get(self, *args, **kwargs):
+        self.calls += 1
+        return _FakeResponse(self.status_code)
+
+
+def test_fetch_export_404_is_permanent():
+    session = _FakeSession(404)
+    with pytest.raises(GdeltPermanentError):
+        fetch_export(date(2026, 11, 2), session=session)
+    assert session.calls == 1
+    assert not is_retryable(GdeltPermanentError("missing"))
+
+
+def test_fetch_export_classifies_client_and_server_errors():
+    with pytest.raises(GdeltPermanentError):
+        fetch_export(date(2026, 11, 2), session=_FakeSession(403))
+
+    with pytest.raises(GdeltError) as excinfo:
+        fetch_export(date(2026, 11, 2), session=_FakeSession(503))
+    assert not isinstance(excinfo.value, GdeltPermanentError)
+    assert is_retryable(excinfo.value)

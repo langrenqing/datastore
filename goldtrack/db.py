@@ -32,7 +32,10 @@ CREATE TABLE IF NOT EXISTS prices (
     PRIMARY KEY (symbol, date)
 );
 
-CREATE INDEX IF NOT EXISTS idx_prices_symbol_date ON prices(symbol, date);
+-- The primary key already provides a unique (symbol, date) index; the old
+-- explicit index was redundant and only added write cost.  Keep the drop so
+-- databases created by earlier versions shed it on the next init().
+DROP INDEX IF EXISTS idx_prices_symbol_date;
 
 CREATE TABLE IF NOT EXISTS events (
     source            TEXT NOT NULL,
@@ -111,8 +114,12 @@ class Database:
     @contextmanager
     def connect(self) -> Iterator[sqlite3.Connection]:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.path)
+        conn = sqlite3.connect(self.path, timeout=30.0)
         conn.row_factory = sqlite3.Row
+        # Wait up to 30s for a competing writer instead of failing immediately.
+        conn.execute("PRAGMA busy_timeout = 30000")
+        # WAL (enabled in init) makes NORMAL durable enough for this local tool.
+        conn.execute("PRAGMA synchronous = NORMAL")
         try:
             yield conn
             conn.commit()
@@ -122,6 +129,8 @@ class Database:
     def init(self, instruments: Sequence[Instrument] = ()) -> "Database":
         """Create tables and register instrument metadata."""
         with self.connect() as conn:
+            # WAL lets the daily price job and the event backfill share the file.
+            conn.execute("PRAGMA journal_mode = WAL")
             conn.executescript(SCHEMA)
             for instrument in instruments:
                 conn.execute(
@@ -273,7 +282,12 @@ class Database:
         min_intensity: float = 0.0,
         limit: int | None = None,
     ) -> list[GeoEvent]:
-        """Return events in the inclusive date range, oldest first."""
+        """Return events in the inclusive date range, oldest first.
+
+        When ``limit`` is set, keep the newest ``limit`` events: dates are
+        ranked newest first and, within one date, the strongest events win.
+        The returned list is still ordered oldest first.
+        """
         clauses = ["level >= ?", "intensity >= ?"]
         params: list = [min_level, min_intensity]
         start_iso = _as_iso(start)
@@ -288,17 +302,27 @@ class Database:
             placeholders = ",".join("?" for _ in regions)
             clauses.append(f"region IN ({placeholders})")
             params.extend(regions)
-        sql = (
-            "SELECT * FROM events "
-            f"WHERE {' AND '.join(clauses)} "
-            "ORDER BY occurred_at, intensity DESC, source_event_id"
-        )
+        where = f"WHERE {' AND '.join(clauses)}"
+        order_ascending = "ORDER BY occurred_at, intensity DESC, source_event_id"
+        if limit is not None and limit > 0:
+            # Select the newest rows in SQL so a limit does not materialise the
+            # whole range.  occurred_at + intensity DESC ranks the strongest
+            # events of the newest date first; the outer query restores the
+            # "oldest first" contract.
+            sql = (
+                "SELECT * FROM ("
+                f"SELECT * FROM events {where} "
+                "ORDER BY occurred_at DESC, intensity DESC, source_event_id DESC "
+                "LIMIT ?"
+                ") "
+                f"{order_ascending}"
+            )
+            params.append(limit)
+        else:
+            sql = f"SELECT * FROM events {where} {order_ascending}"
         with self.connect() as conn:
             rows = conn.execute(sql, params).fetchall()
-        events = [_event_from_row(row) for row in rows]
-        if limit is not None and limit > 0:
-            events = events[-limit:]
-        return events
+        return [_event_from_row(row) for row in rows]
 
     def count_events(self) -> int:
         """Return the number of stored events."""

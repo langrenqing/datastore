@@ -40,7 +40,20 @@ def test_query_events_filters(tmp_path):
     ] == ["1002", "1007"]
     assert [
         event.source_event_id for event in db.query_events(limit=1)
-    ] == ["1007"]
+    ] == ["1002"]
+
+
+def test_query_events_limit_keeps_newest_and_strongest(tmp_path):
+    db = Database(tmp_path / "gold.db").init()
+    db.upsert_events(make_events())
+
+    # 2026-11-01 is the newest date; its stronger event must win a limit of 1.
+    assert [event.source_event_id for event in db.query_events(limit=1)] == ["1002"]
+    assert [event.source_event_id for event in db.query_events(limit=2)] == [
+        "1002",
+        "1007",
+    ]
+    assert len(db.query_events(limit=99)) == 4
 
 
 def test_latest_event_source_date_and_range(tmp_path):

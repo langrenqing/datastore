@@ -64,6 +64,22 @@ class GdeltError(RuntimeError):
     """Raised when a GDELT export cannot be downloaded or parsed."""
 
 
+class GdeltPermanentError(GdeltError):
+    """A GDELT failure that will not be fixed by retrying now.
+
+    Unexported daily files (404) and other client errors (except timeouts and
+    rate limits) fall here.  The day remains missing; a later run can retry it
+    once it is published.
+    """
+
+
+def is_retryable(exc: BaseException) -> bool:
+    """Return whether a GDELT failure is transient and worth retrying."""
+    if isinstance(exc, GdeltPermanentError):
+        return False
+    return isinstance(exc, (GdeltError, requests.RequestException))
+
+
 def daily_url(day: date) -> str:
     return DAILY_URL.format(stamp=day.strftime("%Y%m%d"))
 
@@ -157,10 +173,13 @@ def fetch_export(
     except requests.RequestException as exc:
         raise GdeltError(f"下载 {url} 失败: {exc}") from exc
     if response.status_code == 404:
-        raise GdeltError(f"GDELT 日文件不存在: {url}")
+        raise GdeltPermanentError(f"GDELT 日文件不存在: {url}")
     try:
         response.raise_for_status()
     except requests.RequestException as exc:
+        status = response.status_code
+        if 400 <= status < 500 and status not in {408, 425, 429}:
+            raise GdeltPermanentError(f"GDELT 返回 {status}: {url}") from exc
         raise GdeltError(f"下载 {url} 失败: {exc}") from exc
     return parse_export_bytes(response.content, url=url)
 

@@ -49,3 +49,30 @@ def test_instrument_metadata(tmp_path):
     assert instrument.name == "上海金 Au99.99"
     assert instrument.unit == "元/克"
     assert db.instrument("NOPE") is None
+
+
+def test_connect_enables_wal_and_busy_timeout(tmp_path):
+    db = Database(tmp_path / "gold.db").init()
+    with db.connect() as conn:
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
+        assert conn.execute("PRAGMA busy_timeout").fetchone()[0] == 30000
+        # 1 == NORMAL
+        assert conn.execute("PRAGMA synchronous").fetchone()[0] == 1
+
+
+def test_init_drops_redundant_prices_index(tmp_path):
+    db = Database(tmp_path / "gold.db").init()
+    with db.connect() as conn:
+        conn.execute("CREATE INDEX idx_prices_symbol_date ON prices(symbol, date)")
+
+    db.init()
+
+    with db.connect() as conn:
+        indexes = {
+            row["name"]
+            for row in conn.execute(
+                "SELECT name FROM sqlite_master "
+                "WHERE type = 'index' AND tbl_name = 'prices'"
+            )
+        }
+    assert "idx_prices_symbol_date" not in indexes

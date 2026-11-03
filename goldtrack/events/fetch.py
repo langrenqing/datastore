@@ -9,7 +9,6 @@ from typing import Callable
 from ..db import Database
 from ..sources.base import RetryPolicy, SourceError, call_with_retry
 from . import gdelt
-from .gdelt import GdeltError
 from .models import DayFetchResult, EventFetchSummary, GdeltRow
 
 logger = logging.getLogger(__name__)
@@ -81,12 +80,19 @@ def collect_events(
         day = first + timedelta(days=offset)
         try:
             if sleep is None:
-                rows = call_with_retry(lambda day=day: fetcher(day), policy)
+                rows = call_with_retry(
+                    lambda day=day: fetcher(day),
+                    policy,
+                    retry_if=gdelt.is_retryable,
+                )
             else:
                 rows = call_with_retry(
-                    lambda day=day: fetcher(day), policy, sleep=sleep
+                    lambda day=day: fetcher(day),
+                    policy,
+                    sleep=sleep,
+                    retry_if=gdelt.is_retryable,
                 )
-        except (SourceError, GdeltError) as exc:
+        except SourceError as exc:
             message = f"{day.isoformat()} 获取失败: {exc}"
             logger.warning(message)
             summary.results.append(DayFetchResult(day=day, parsed=0, error=message))

@@ -6,7 +6,10 @@ import time
 from dataclasses import dataclass
 from typing import Callable, Protocol, TypeVar
 
+import requests
+
 from ..models import Bar
+from .http import FetchError
 
 T = TypeVar("T")
 
@@ -38,24 +41,46 @@ class RetryPolicy:
         return min(self.base_delay * (2 ** (attempt - 1)), self.max_delay)
 
 
+def is_retryable_error(exc: BaseException) -> bool:
+    """Return whether ``exc`` is a transient failure worth retrying.
+
+    Only network failures and errors the data sources explicitly classify as
+    recoverable are retried.  Program errors such as ``ValueError`` or
+    ``KeyError`` are not: retrying them only delays the real fix and hides the
+    original traceback behind a generic "source failed" message.
+    """
+    return isinstance(exc, (SourceError, FetchError, requests.RequestException))
+
+
 def call_with_retry(
     func: Callable[[], T],
     policy: RetryPolicy,
     *,
     sleep: Callable[[float], None] = time.sleep,
     on_retry: Callable[[int, Exception, float], None] | None = None,
+    retry_if: Callable[[BaseException], bool] = is_retryable_error,
 ) -> T:
-    """Call ``func``, retrying transient failures with exponential backoff."""
+    """Call ``func``, retrying transient failures with exponential backoff.
+
+    Failures rejected by ``retry_if`` fail fast but are still wrapped in
+    :class:`SourceError` so callers keep their existing "record the failure and
+    continue with the next source/day" behaviour.  The original exception is
+    preserved as ``__cause__``.
+    """
     last_error: Exception | None = None
     for attempt in range(1, policy.attempts + 1):
         try:
             return func()
-        except Exception as exc:  # noqa: BLE001 - retried and re-raised below
+        except Exception as exc:  # noqa: BLE001 - classified by retry_if
             last_error = exc
+            if not retry_if(exc):
+                raise SourceError(f"{type(exc).__name__}: {exc}") from exc
             if attempt >= policy.attempts:
                 break
             delay = policy.delay_for(attempt)
             if on_retry is not None:
                 on_retry(attempt, exc, delay)
             sleep(delay)
-    raise SourceError(str(last_error) if last_error else "未知错误")
+    raise SourceError(
+        str(last_error) if last_error else "未知错误"
+    ) from last_error
