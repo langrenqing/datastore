@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -110,4 +111,8 @@ def spawn_job(
         )
         raise
     db.set_run_pid(run_id, process.pid)
+    # Reap the child when it exits.  Without this a finished process can stay
+    # a zombie and ``os.kill(pid, 0)`` keeps reporting it alive, so a crashed
+    # run would never be marked interrupted.
+    threading.Thread(target=process.wait, daemon=True).start()
     return run_id
