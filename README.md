@@ -93,6 +93,45 @@ AU0 沪金期货…   2026-11-02          836.76      -2.15%       857.55       
 
 图表示例位于 `output/charts/`：上方为收盘价与 MA5/MA20/MA60，下方为日涨跌幅与 20 日年化波动率。
 
+## 本机 Web UI
+
+除命令行外，项目自带一个仅监听本机的数据工作台（FastAPI + 静态 ECharts，不需要 Node/npm 构建）：
+
+```bash
+pip install -r requirements.txt
+python -m goldtrack web --port 8000
+# 或：python -m goldtrack.web --port 8000
+```
+
+打开 <http://127.0.0.1:8000>。默认使用 `data/gold.db`，可用 `--db` 或 `GOLDTRACK_DB` 指定；服务默认只绑定 `127.0.0.1`，本机单用户不做鉴权。
+
+页面包含：
+
+- **走势与指标**：收盘价、MA5/20/60、日涨跌幅与 20 日年化波动率；30/90/180/365 交易日、全部或自定义区间；滚轮/滑块缩放。
+- **事件叠加**：金价 + 事件气泡 + 地区时间轴，支持 30/90/180/365 日与最低等级；服务端按「每日最强 / 地区×交易日最强」聚合，避免把数万条事件一次性塞进浏览器。
+- **事件列表**：日期、地区、等级、类型、关键词筛选和分页，保留原文链接。
+- **数据管理**：品种/事件库最新日期与条数、最近成功/失败采集、手动触发价格增量/全量、事件增量/补采/自定义区间，以及运行进度和历史。
+
+采集在独立子进程执行（避免 GDELT 解析占用 API 进程），任务状态写入 SQLite 的 `collection_runs`，页面轮询进度；同一时间只允许一个采集任务。`scripts/daily.sh` / `scripts/events.sh` 已改为通过 `--record-run` 写入同一张表，因此 cron 采集也会出现在页面的「最近成功/失败」和运行记录中。SQLite 使用 WAL + busy timeout，允许采集写入时继续读取。
+
+主要接口（FastAPI 自动生成 OpenAPI，启动后访问 `/docs`）：
+
+| 接口 | 说明 |
+| --- | --- |
+| `GET /api/instruments` | 品种元数据与最新快照 |
+| `GET /api/prices` | OHLCV + 指标，支持 `days`/`start`/`end`/`max_points` |
+| `GET /api/events` | 事件分页与筛选 |
+| `GET /api/events/overlay` | 叠加图聚合数据 |
+| `GET /api/status` | 数据状态、最近运行、当前任务 |
+| `GET /api/jobs`、`GET /api/jobs/{id}` | 运行历史与任务进度 |
+| `POST /api/collect` | 启动价格/事件采集（202 + `run_id`） |
+
+公网部署需要自行加反向代理鉴权、HTTPS 和 `POST /api/collect` 限流；默认配置不要直接暴露到公网。
+
+![Web UI 价格走势](docs/screenshots/after-web-prices.png)
+
+![Web UI 事件叠加](docs/screenshots/after-web-events-30d.png)
+
 ## 定时采集
 
 `scripts/daily.sh` 已封装「增量采集 + 报告 + 图表」，并将输出写入 `logs/daily.log`。`scripts/events.sh` 负责 GDELT 增量采集与 XAU 事件叠加图，可在价格脚本之后执行。
@@ -194,6 +233,7 @@ goldtrack/
 ├── models.py         # Bar / Instrument 等数据模型
 ├── report.py         # 终端趋势报告
 ├── chart.py          # Matplotlib 图表
+├── web/              # 本机 Web UI（FastAPI + 静态 ECharts）
 ├── sources/          # 新浪财经、上金所、Yahoo 数据源
 └── events/           # GDELT 采集、过滤、强度、窗口统计与叠加图
 scripts/daily.sh      # 价格定时任务脚本
@@ -208,7 +248,7 @@ pip install -r requirements-dev.txt
 python -m pytest -q
 ```
 
-测试不访问网络：数据源解析使用 `tests/fixtures/` 中的固定响应，采集重试/回退使用假数据源。
+测试不访问网络：数据源解析使用 `tests/fixtures/` 中的固定响应，采集重试/回退使用假数据源；Web API 使用 FastAPI `TestClient` 与临时 SQLite。
 
 ## 数据源与限制
 

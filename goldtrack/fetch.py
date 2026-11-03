@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, timedelta
-from typing import Sequence
+from typing import Callable, Sequence
 
 from .db import Database
 from .instruments import get_instrument
@@ -132,19 +132,26 @@ def collect_all(
     start: date | None = None,
     end: date | None = None,
     retry: RetryPolicy | None = None,
+    on_symbol: Callable[[int, int, FetchResult], None] | None = None,
 ) -> list[FetchResult]:
-    """Collect every requested symbol; a failure never aborts the others."""
+    """Collect every requested symbol; a failure never aborts the others.
+
+    ``on_symbol`` is called after each symbol with ``(done, total, result)`` so
+    recorders can publish progress without copying the loop.
+    """
     results = []
-    for symbol in symbols:
+    total = len(symbols)
+    for index, symbol in enumerate(symbols):
         instrument = get_instrument(symbol)
-        results.append(
-            collect_instrument(
-                db,
-                instrument,
-                full=full,
-                start=start,
-                end=end,
-                retry=retry,
-            )
+        result = collect_instrument(
+            db,
+            instrument,
+            full=full,
+            start=start,
+            end=end,
+            retry=retry,
         )
+        results.append(result)
+        if on_symbol is not None:
+            on_symbol(index + 1, total, result)
     return results

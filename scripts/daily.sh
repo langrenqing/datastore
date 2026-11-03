@@ -9,4 +9,4 @@ cd "$(dirname "$0")/.."
 
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 mkdir -p logs output/charts
-exec "$PYTHON_BIN" -m goldtrack run "$@" >> logs/daily.log 2>&1
+exec "$PYTHON_BIN" -m goldtrack run --record-run "$@" >> logs/daily.log 2>&1

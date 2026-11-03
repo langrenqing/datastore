@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from contextlib import contextmanager
 from datetime import date, datetime, timezone
@@ -90,7 +91,32 @@ CREATE TABLE IF NOT EXISTS event_impacts (
 
 CREATE INDEX IF NOT EXISTS idx_event_impacts_symbol
     ON event_impacts(symbol, window_name);
+
+CREATE TABLE IF NOT EXISTS collection_runs (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind              TEXT NOT NULL,
+    source            TEXT NOT NULL DEFAULT 'cli',
+    params            TEXT NOT NULL DEFAULT '{}',
+    status            TEXT NOT NULL,
+    started_at        TEXT NOT NULL,
+    finished_at       TEXT,
+    pid               INTEGER,
+    progress_current  INTEGER NOT NULL DEFAULT 0,
+    progress_total    INTEGER NOT NULL DEFAULT 0,
+    message           TEXT,
+    summary           TEXT,
+    error             TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_collection_runs_started
+    ON collection_runs(started_at);
+CREATE INDEX IF NOT EXISTS idx_collection_runs_status
+    ON collection_runs(status);
 """
+
+
+class CollectionBusy(RuntimeError):
+    """Raised when a collection run is requested while another is active."""
 
 
 def _now_iso() -> str:
@@ -413,6 +439,220 @@ class Database:
             )
             for row in rows
         ]
+
+    # -- collection run bookkeeping -------------------------------------
+
+    def create_run(
+        self, kind: str, params: dict | None = None, source: str = "cli"
+    ) -> int:
+        """Create a queued run, refusing when another run is still active.
+
+        ``BEGIN IMMEDIATE`` serialises the check and insert across processes so
+        the Web UI and a cron job can never start two collectors at once.
+        """
+        payload = json.dumps(params or {}, ensure_ascii=False)
+        with self.connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            active = conn.execute(
+                "SELECT id FROM collection_runs "
+                "WHERE status IN ('queued', 'running') ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+            if active is not None:
+                raise CollectionBusy(
+                    f"已有采集任务在运行（run #{active['id']}），请等待其结束"
+                )
+            cursor = conn.execute(
+                "INSERT INTO collection_runs(kind, source, params, status, started_at) "
+                "VALUES(?,?,?,?,?)",
+                (kind, source, payload, "queued", _now_iso()),
+            )
+            return int(cursor.lastrowid)
+
+    def start_run(self, run_id: int, pid: int | None = None) -> None:
+        """Mark a queued run as running, keeping any pid set by the spawner."""
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE collection_runs SET status = 'running', "
+                "pid = COALESCE(?, pid) WHERE id = ? AND status = 'queued'",
+                (pid, run_id),
+            )
+
+    def set_run_pid(self, run_id: int, pid: int) -> None:
+        """Record the worker pid as soon as the subprocess is spawned."""
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE collection_runs SET pid = ? WHERE id = ?", (pid, run_id)
+            )
+
+    def set_run_progress(
+        self, run_id: int, current: int, total: int, message: str | None = None
+    ) -> None:
+        """Update the in-flight progress of a running collection."""
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE collection_runs SET progress_current = ?, "
+                "progress_total = ?, message = ? "
+                "WHERE id = ? AND status = 'running'",
+                (max(0, current), max(0, total), message, run_id),
+            )
+
+    def finish_run(
+        self,
+        run_id: int,
+        status: str,
+        summary: dict | None = None,
+        error: str | None = None,
+    ) -> None:
+        """Store the final state, summary and optional error of a run."""
+        summary_text = (
+            None if summary is None else json.dumps(summary, ensure_ascii=False)
+        )
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE collection_runs SET status = ?, finished_at = ?, "
+                "progress_current = progress_total, message = NULL, "
+                "summary = ?, error = ? WHERE id = ?",
+                (status, _now_iso(), summary_text, error, run_id),
+            )
+
+    def mark_run_interrupted(
+        self, run_id: int, reason: str = "任务已中断（进程不再运行）"
+    ) -> None:
+        """Close a stale run whose worker process disappeared."""
+        self.finish_run(run_id, "interrupted", error=reason)
+
+    def get_run(self, run_id: int) -> dict | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM collection_runs WHERE id = ?", (run_id,)
+            ).fetchone()
+        return dict(row) if row else None
+
+    def list_runs(self, limit: int = 20) -> list[dict]:
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT * FROM collection_runs ORDER BY id DESC LIMIT ?",
+                (max(1, limit),),
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def active_run(self) -> dict | None:
+        with self.connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM collection_runs "
+                "WHERE status IN ('queued', 'running') ORDER BY id DESC LIMIT 1"
+            ).fetchone()
+        return dict(row) if row else None
+
+    # -- Web-oriented event queries -------------------------------------
+
+    def query_events_page(
+        self,
+        *,
+        start: date | str | None = None,
+        end: date | str | None = None,
+        regions: Sequence[str] | None = None,
+        min_level: int = 1,
+        min_intensity: float = 0.0,
+        event_type: str | None = None,
+        keyword: str | None = None,
+        limit: int = 50,
+        offset: int = 0,
+    ) -> tuple[int, list[dict]]:
+        """Return one page of events plus the total, without ``raw_json``.
+
+        The Web event list must paginate in SQL: the existing
+        :meth:`query_events` slices a fully materialised result in Python.
+        """
+        clauses = ["level >= ?", "intensity >= ?"]
+        params: list = [min_level, min_intensity]
+        start_iso = _as_iso(start)
+        end_iso = _as_iso(end)
+        if start_iso:
+            clauses.append("occurred_at >= ?")
+            params.append(start_iso)
+        if end_iso:
+            clauses.append("occurred_at <= ?")
+            params.append(end_iso)
+        if regions:
+            placeholders = ",".join("?" for _ in regions)
+            clauses.append(f"region IN ({placeholders})")
+            params.extend(regions)
+        if event_type:
+            clauses.append("event_type = ?")
+            params.append(event_type)
+        if keyword:
+            like = f"%{keyword.strip()}%"
+            clauses.append(
+                "(summary LIKE ? OR country LIKE ? OR event_type LIKE ?)"
+            )
+            params.extend([like, like, like])
+        where = " AND ".join(clauses)
+        with self.connect() as conn:
+            total_row = conn.execute(
+                f"SELECT COUNT(*) AS total FROM events WHERE {where}", params
+            ).fetchone()
+            rows = conn.execute(
+                "SELECT source, source_event_id, occurred_at, published_at, "
+                "country_code, country, region, event_type, level, intensity, "
+                "num_sources, summary, url FROM events "
+                f"WHERE {where} "
+                "ORDER BY occurred_at DESC, intensity DESC, source_event_id "
+                "LIMIT ? OFFSET ?",
+                [*params, max(0, limit), max(0, offset)],
+            ).fetchall()
+        return int(total_row["total"]) if total_row else 0, [dict(row) for row in rows]
+
+    def query_events_lean(
+        self,
+        *,
+        start: date | str | None = None,
+        end: date | str | None = None,
+        min_level: int = 1,
+        min_intensity: float = 0.0,
+    ) -> list[GeoEvent]:
+        """Return event rows without ``raw_json`` for chart-side aggregation."""
+        clauses = ["level >= ?", "intensity >= ?"]
+        params: list = [min_level, min_intensity]
+        start_iso = _as_iso(start)
+        end_iso = _as_iso(end)
+        if start_iso:
+            clauses.append("occurred_at >= ?")
+            params.append(start_iso)
+        if end_iso:
+            clauses.append("occurred_at <= ?")
+            params.append(end_iso)
+        with self.connect() as conn:
+            rows = conn.execute(
+                "SELECT source, source_event_id, occurred_at, published_at, "
+                "country, region, event_type, level, intensity, num_sources, "
+                "summary, url FROM events "
+                f"WHERE {' AND '.join(clauses)} ORDER BY occurred_at",
+                params,
+            ).fetchall()
+        events: list[GeoEvent] = []
+        for row in rows:
+            published = row["published_at"]
+            events.append(
+                GeoEvent(
+                    source=row["source"],
+                    source_event_id=row["source_event_id"],
+                    occurred_at=date.fromisoformat(row["occurred_at"]),
+                    published_at=(
+                        date.fromisoformat(published[:10]) if published else None
+                    ),
+                    country_code="",
+                    country=row["country"],
+                    region=row["region"],
+                    event_type=row["event_type"],
+                    num_sources=row["num_sources"],
+                    intensity=row["intensity"],
+                    level=row["level"],
+                    summary=row["summary"] or "",
+                    url=row["url"] or "",
+                )
+            )
+        return events
 
 
 def _event_from_row(row: sqlite3.Row) -> GeoEvent:

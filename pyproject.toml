@@ -13,16 +13,28 @@ dependencies = [
     "numpy>=1.23",
     "pandas>=1.5",
     "requests>=2.28",
+    "fastapi>=0.110",
+    "pydantic>=2.5",
+    "uvicorn>=0.24",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "httpx>=0.27"]
 
 [project.scripts]
 goldtrack = "goldtrack.cli:main"
+goldtrack-web = "goldtrack.web.app:main"
 
 [tool.setuptools.packages.find]
 include = ["goldtrack*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.setuptools.package-data]
+"goldtrack.web" = [
+    "static/*.html",
+    "static/*.css",
+    "static/*.js",
+    "static/vendor/*.js",
+]
