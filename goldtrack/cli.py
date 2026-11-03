@@ -7,13 +7,19 @@ import json
 import logging
 import math
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Sequence
 
 from . import config
 from .chart import default_chart_path, plot_chart
 from .db import Database
+from .events.alignment import align_events, as_date, trading_days
+from .events.analysis import WINDOWS, compute_event_impacts, summarize_impacts
+from .events.chart import default_event_chart_path, plot_event_chart
+from .events.fetch import collect_events
+from .events.severity import level_name
+from .events.watchlist import ALL_REGIONS
 from .fetch import collect_all
 from .instruments import DEFAULT_SYMBOLS, INSTRUMENTS, get_instrument
 from .indicators import bars_to_frame, compute_indicators
@@ -299,10 +305,283 @@ def cmd_run(args) -> int:
     return code
 
 
+def _utc_today() -> date:
+    return datetime.now(tz=timezone.utc).date()
+
+
+def _event_market_dates(db: Database, symbol: str, events) -> dict[str, date]:
+    bars = db.query(symbol)
+    if not bars:
+        return {}
+    days = trading_days([bar.date for bar in bars])
+    return {
+        event.source_event_id: market_date
+        for event, market_date in align_events(events, days)
+    }
+
+
+def _event_record(event, market_date: date | None) -> dict:
+    return {
+        "source": event.source,
+        "source_event_id": event.source_event_id,
+        "occurred_at": event.occurred_at.isoformat(),
+        "market_date": market_date.isoformat() if market_date else None,
+        "published_at": event.published_at.isoformat() if event.published_at else None,
+        "country_code": event.country_code,
+        "country": event.country,
+        "region": event.region,
+        "event_code": event.event_code,
+        "root_code": event.root_code,
+        "event_type": event.event_type,
+        "level": event.level,
+        "intensity": event.intensity,
+        "type_severity": event.type_severity,
+        "scale_score": event.scale_score,
+        "spread_score": event.spread_score,
+        "tone_score": event.tone_score,
+        "region_weight": event.region_weight,
+        "num_mentions": event.num_mentions,
+        "num_sources": event.num_sources,
+        "avg_tone": event.avg_tone,
+        "summary": event.summary,
+        "url": event.url,
+    }
+
+
+def cmd_events_fetch(args) -> int:
+    db = _db(args)
+    retry = RetryPolicy(attempts=args.retries, base_delay=args.retry_delay)
+    summary = collect_events(
+        db,
+        start=args.start,
+        end=args.end,
+        days=args.days,
+        min_sources=args.min_sources,
+        global_min_sources=args.global_min_sources,
+        all_countries=args.all_countries,
+        min_intensity=args.min_intensity,
+        retry=retry,
+    )
+    if not summary.results:
+        print("事件采集：没有需要更新的日期（GDELT 日文件通常在次日提供）。")
+    else:
+        print(f"事件采集：{summary.start} ~ {summary.end}")
+        ok = summary.days - len(summary.failures)
+        print(
+            f"  日文件 {ok}/{summary.days} 成功，解析 {summary.parsed:,} 条，"
+            f"关注事件 {summary.relevant:,} 条，写入/更新 {summary.stored:,} 条"
+        )
+        for failure in summary.failures:
+            print(f"  失败 {failure.day}: {failure.error}")
+    print(f"事件库当前共 {db.count_events():,} 条")
+    return 1 if summary.failures else 0
+
+
+def cmd_events_query(args) -> int:
+    db = _db(args)
+    end = args.end or _utc_today()
+    start = args.start or end - timedelta(days=args.days - 1)
+    events = db.query_events(
+        start=start,
+        end=end,
+        regions=args.regions,
+        min_level=args.level,
+        min_intensity=args.min_intensity,
+        limit=args.limit,
+    )
+    market_dates = _event_market_dates(db, args.symbol, events)
+    if args.json:
+        records = [
+            _event_record(event, market_dates.get(event.source_event_id))
+            for event in reversed(events)
+        ]
+        print(json.dumps(records, ensure_ascii=False, indent=2))
+        return 0
+    if not events:
+        print("没有查询到事件。")
+        return 0
+
+    headers = ["日期", "市场日", "地区", "类型", "等级", "强度", "国家", "摘要"]
+    widths = (12, 12, 14, 10, 8, 6, 8, 46)
+    aligns = ("left", "left", "left", "left", "left", "right", "left", "left")
+    body = []
+    for event in reversed(events):
+        market_date = market_dates.get(event.source_event_id)
+        body.append(
+            [
+                event.occurred_at.isoformat(),
+                market_date.isoformat() if market_date else "-",
+                event.region,
+                event.event_type,
+                f"{event.level} {level_name(event.level)}",
+                f"{event.intensity:.1f}",
+                event.country,
+                event.summary,
+            ]
+        )
+    print("\n".join(render_table(headers, body, widths, aligns)))
+    print()
+    print(f"共显示 {len(events)} 条事件（{start} ~ {end}）。")
+    return 0
+
+
+def cmd_events_chart(args) -> int:
+    db = _db(args)
+    bars = db.query(args.symbol)
+    if not bars:
+        print(f"{args.symbol} 没有价格数据，请先运行 `python -m goldtrack fetch`。")
+        return 1
+    instrument = get_instrument(args.symbol)
+    frame = compute_indicators(bars_to_frame(bars))
+    data = frame.tail(args.days)
+    start = as_date(data["date"].iloc[0])
+    events = db.query_events(
+        start=start - timedelta(days=7), end=bars[-1].date
+    )
+    out = Path(args.out) if args.out else default_event_chart_path(
+        Path(args.chart_dir), args.symbol, bars[-1].date, args.days
+    )
+    try:
+        path = plot_event_chart(frame, events, instrument, out, days=args.days)
+    except ValueError as exc:
+        print(f"事件图表生成失败: {exc}")
+        return 1
+    print(f"事件图表已生成: {path}")
+    return 0
+
+
+def cmd_events_windows(args) -> int:
+    db = _db(args)
+    bars = db.query(args.symbol)
+    if not bars:
+        print(f"{args.symbol} 没有价格数据，请先运行 `python -m goldtrack fetch`。")
+        return 1
+    frame = compute_indicators(bars_to_frame(bars))
+    data = frame.tail(args.days)
+    start = as_date(data["date"].iloc[0])
+    end = bars[-1].date
+    events = db.query_events(start=start, end=end, min_level=args.min_level)
+    if not events:
+        print("没有可分析的事件，请先运行 `python -m goldtrack events fetch`。")
+        return 1
+
+    impacts = compute_event_impacts(events, bars, args.symbol)
+    if args.store:
+        db.upsert_event_impacts(impacts)
+    summary = summarize_impacts(impacts, events)
+    computed = {(impact.source, impact.source_event_id) for impact in impacts}
+
+    if args.json:
+        payload = {
+            "symbol": args.symbol,
+            "price_start": start.isoformat(),
+            "price_end": end.isoformat(),
+            "selected_events": len(events),
+            "computed_events": len(computed),
+            "windows": [name for name, _ in WINDOWS],
+            "summary": [
+                {
+                    "window": row.window,
+                    "level": row.level,
+                    "count": row.count,
+                    "mean_car": round(row.mean_car, 4),
+                    "median_car": round(row.median_car, 4),
+                    "positive_share": round(row.positive_share, 4),
+                }
+                for row in summary
+            ],
+            "impacts": [
+                {
+                    "source_event_id": impact.source_event_id,
+                    "window": impact.window,
+                    "market_date": impact.market_date.isoformat(),
+                    "est_start": impact.est_start.isoformat(),
+                    "est_end": impact.est_end.isoformat(),
+                    "baseline_pct": impact.baseline_pct,
+                    "car_pct": impact.car_pct,
+                }
+                for impact in impacts
+            ],
+        }
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 0
+
+    print(f"事件窗口统计（{args.symbol}，{start} ~ {end}）")
+    print(
+        f"选中事件 {len(events)} 个，其中 {len(computed)} 个具备完整的估计窗口"
+        f"（[-120,-21] 交易日）与事件窗口。"
+    )
+    print()
+    headers = ["窗口", "等级", "事件数", "平均CAR", "中位CAR", "CAR>0占比"]
+    widths = (8, 8, 7, 10, 10, 10)
+    aligns = ("left", "left", "right", "right", "right", "right")
+    body = []
+    for row in summary:
+        level_text = "全部" if row.level is None else f"{row.level} {level_name(row.level)}"
+        body.append(
+            [
+                row.window,
+                level_text,
+                str(row.count),
+                f"{row.mean_car:+.2f}%",
+                f"{row.median_car:+.2f}%",
+                f"{row.positive_share * 100:.1f}%",
+            ]
+        )
+    print("\n".join(render_table(headers, body, widths, aligns)))
+
+    chosen_window = WINDOWS[1][0] if len(WINDOWS) > 1 else WINDOWS[0][0]
+    chosen = {
+        impact.source_event_id: impact
+        for impact in impacts
+        if impact.window == chosen_window
+    }
+    event_by_id = {event.source_event_id: event for event in events}
+    ranked = []
+    seen_dates = set()
+    for impact in sorted(
+        chosen.values(), key=lambda item: abs(item.car_pct), reverse=True
+    ):
+        if impact.market_date in seen_dates:
+            continue
+        seen_dates.add(impact.market_date)
+        ranked.append(impact)
+        if len(ranked) >= args.top:
+            break
+    if ranked:
+        print()
+        print(f"绝对值最大的事件窗口（{chosen_window}，交易日）：")
+        headers = ["市场日", "地区", "类型", "等级", "强度", "CAR"]
+        widths = (12, 14, 10, 8, 6, 10)
+        aligns = ("left", "left", "left", "left", "right", "right")
+        body = []
+        for impact in ranked:
+            event = event_by_id.get(impact.source_event_id)
+            if event is None:
+                continue
+            body.append(
+                [
+                    impact.market_date.isoformat(),
+                    event.region,
+                    event.event_type,
+                    f"{event.level} {level_name(event.level)}",
+                    f"{event.intensity:.1f}",
+                    f"{impact.car_pct:+.2f}%",
+                ]
+            )
+        print("\n".join(render_table(headers, body, widths, aligns)))
+    print()
+    print(
+        "说明：CAR 为以 [-120,-21] 交易日均值收益为基准的累计异常收益，"
+        "仅作描述性统计，不代表因果影响；事件聚集时不能按独立样本解读。"
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="goldtrack",
-        description="黄金价格趋势跟踪（日线采集、存储、指标与图表）",
+        description="黄金价格趋势跟踪（日线、指标、图表）与 GDELT 地缘政治事件",
     )
     parser.add_argument("--db", default=str(config.DEFAULT_DB_PATH), help="SQLite 数据库路径")
     parser.add_argument("-v", "--verbose", action="store_true", help="输出详细日志")
@@ -367,6 +646,86 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument("--days", type=_positive_int, default=config.DEFAULT_CHART_DAYS)
     run_parser.add_argument("--chart-dir", default=str(config.DEFAULT_CHART_DIR))
     run_parser.set_defaults(func=cmd_run)
+
+    events_parser = subparsers.add_parser("events", help="地缘政治事件（GDELT）")
+    event_subparsers = events_parser.add_subparsers(
+        dest="events_command", required=True
+    )
+
+    event_fetch = event_subparsers.add_parser(
+        "fetch", help="采集 GDELT 日文件并入库（默认增量）"
+    )
+    event_fetch.add_argument(
+        "--days", type=_positive_int, default=30, help="空库时回填的自然日数"
+    )
+    event_fetch.add_argument("--start", type=_parse_date, help="起始日期 YYYY-MM-DD")
+    event_fetch.add_argument("--end", type=_parse_date, help="结束日期 YYYY-MM-DD")
+    event_fetch.add_argument(
+        "--min-sources", type=_positive_int, default=3, help="关注区域事件的最少信源数"
+    )
+    event_fetch.add_argument(
+        "--global-min-sources",
+        type=_positive_int,
+        default=10,
+        help="非关注区域全球重大事件的最少信源数",
+    )
+    event_fetch.add_argument(
+        "--all-countries", action="store_true", help="不过滤国家，保留所有显著事件"
+    )
+    event_fetch.add_argument(
+        "--min-intensity", type=_non_negative_float, default=0.0, help="最低强度分"
+    )
+    event_fetch.add_argument("--retries", type=_positive_int, default=3, help="每天重试次数")
+    event_fetch.add_argument(
+        "--retry-delay", type=_non_negative_float, default=1.0, help="首次重试等待秒数"
+    )
+    event_fetch.set_defaults(func=cmd_events_fetch)
+
+    event_query = event_subparsers.add_parser("query", help="查询已入库事件")
+    event_query.add_argument("--symbol", type=_parse_symbol, default="XAU", help="用于计算市场日的品种")
+    event_query.add_argument("--start", type=_parse_date)
+    event_query.add_argument("--end", type=_parse_date)
+    event_query.add_argument(
+        "--days", type=_positive_int, default=90, help="未指定起止日期时回看的自然日数"
+    )
+    event_query.add_argument(
+        "--region",
+        dest="regions",
+        action="append",
+        choices=ALL_REGIONS,
+        help="只看一个地区，可重复",
+    )
+    event_query.add_argument("--level", type=int, choices=range(1, 6), default=1, help="最低等级")
+    event_query.add_argument(
+        "--min-intensity", type=_non_negative_float, default=0.0, help="最低强度分"
+    )
+    event_query.add_argument("--limit", type=_positive_int, default=30, help="最多显示条数")
+    event_query.add_argument("--json", action="store_true", help="输出 JSON")
+    event_query.set_defaults(func=cmd_events_query)
+
+    event_chart = event_subparsers.add_parser(
+        "chart", help="生成金价 + 事件叠加图"
+    )
+    event_chart.add_argument("--symbol", type=_parse_symbol, default="XAU")
+    event_chart.add_argument("--days", type=_positive_int, default=config.DEFAULT_CHART_DAYS)
+    event_chart.add_argument("--out", help="输出 PNG 路径")
+    event_chart.add_argument("--chart-dir", default=str(config.DEFAULT_CHART_DIR))
+    event_chart.set_defaults(func=cmd_events_chart)
+
+    event_windows = event_subparsers.add_parser(
+        "windows", help="事件窗口异常收益统计（简单事件研究）"
+    )
+    event_windows.add_argument("--symbol", type=_parse_symbol, default="XAU")
+    event_windows.add_argument("--days", type=_positive_int, default=config.DEFAULT_CHART_DAYS)
+    event_windows.add_argument(
+        "--min-level", type=int, choices=range(1, 6), default=1, help="只统计不低于该等级的事件"
+    )
+    event_windows.add_argument("--top", type=_positive_int, default=10, help="显示 CAR 绝对值最大的事件数")
+    event_windows.add_argument("--json", action="store_true", help="输出 JSON")
+    event_windows.add_argument(
+        "--no-store", dest="store", action="store_false", help="不写入 event_impacts 表"
+    )
+    event_windows.set_defaults(func=cmd_events_windows, store=True)
 
     return parser
 

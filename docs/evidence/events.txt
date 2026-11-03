@@ -1,0 +1,19 @@
+P1 视觉证据与真实数据采集记录
+================================
+
+基线（Before）：9eb48d1（PR #6 合并后的 master 代码，只有价格图表，没有事件层）
+本 PR（After）：本 PR head 提交（见 PR 描述）
+
+同一场景：XAU 最近 90 个交易日（2026-06-30 ~ 2026-11-02），真实新浪财经日线。
+截图对：
+- docs/screenshots/before-events-XAU-90d.png
+- docs/screenshots/after-events-XAU-90d.png
+
+真实运行（2026-11-02）：
+- 价格：python -m goldtrack fetch --symbols XAU -> 5184 根日线，最新 2026-11-02
+- 事件：python -m goldtrack events fetch --start 2026-07-05 --end 2026-11-01
+  120/120 个日文件；解析 11,720,782 条原始事件，81,478 条关注事件入库
+- 叠加图：python -m goldtrack events chart --symbol XAU --days 90
+- 窗口统计：python -m goldtrack events windows --symbol XAU --days 90
+  -> 选中 81,174 条事件，80,395 条可计算；0,+3 全部事件平均 CAR +0.35%、中位 +0.17%、CAR>0 占 53.4%
+  -> event_impacts 写入 237,726 行（三个窗口）
