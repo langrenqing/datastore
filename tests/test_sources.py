@@ -4,7 +4,12 @@ from datetime import date
 import pytest
 
 from conftest import fixture_text
-from goldtrack.sources.base import SourceError
+from goldtrack.sources.base import (
+    RetryPolicy,
+    SourceError,
+    call_with_retry,
+    is_retryable_error,
+)
 from goldtrack.sources.sge import parse_sge_payload
 from goldtrack.sources.sina import (
     parse_domestic_rows,
@@ -85,3 +90,57 @@ def test_source_rows_skip_invalid_close():
     bars = parse_global_rows(rows)
     assert len(bars) == 1
     assert bars[0].date == date(2026, 11, 3)
+
+
+def test_call_with_retry_retries_transient_errors():
+    calls = []
+    sleeps = []
+
+    def flaky():
+        calls.append(1)
+        if len(calls) < 3:
+            raise SourceError("temporary")
+        return "ok"
+
+    result = call_with_retry(
+        flaky,
+        RetryPolicy(attempts=3, base_delay=1.0),
+        sleep=sleeps.append,
+    )
+
+    assert result == "ok"
+    assert len(calls) == 3
+    assert sleeps == [1.0, 2.0]
+
+
+def test_call_with_retry_does_not_retry_program_errors():
+    calls = []
+    sleeps = []
+
+    def broken():
+        calls.append(1)
+        raise ValueError("bad field")
+
+    with pytest.raises(SourceError) as excinfo:
+        call_with_retry(
+            broken,
+            RetryPolicy(attempts=3, base_delay=1.0),
+            sleep=sleeps.append,
+        )
+
+    assert len(calls) == 1
+    assert sleeps == []
+    assert isinstance(excinfo.value.__cause__, ValueError)
+    assert "ValueError" in str(excinfo.value)
+    assert not is_retryable_error(ValueError("bad field"))
+
+
+def test_retry_policy_delay_sequence():
+    policy = RetryPolicy(attempts=5, base_delay=1.0, max_delay=8.0)
+    assert [policy.delay_for(attempt) for attempt in range(1, 6)] == [
+        1.0,
+        2.0,
+        4.0,
+        8.0,
+        8.0,
+    ]

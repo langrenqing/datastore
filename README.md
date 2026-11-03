@@ -162,7 +162,7 @@ python -m goldtrack events fetch
 # 指定区间回溯（每天一个日文件，约数秒）
 python -m goldtrack events fetch --start 2026-08-01 --end 2026-10-31
 
-# 查询（默认最近 90 天、最多 30 条；--level 只看等级）
+# 查询（默认最近 90 天、最多 30 条；limit 取最近日期、同日优先高强度；--level 只看等级）
 python -m goldtrack events query --days 30 --level 3
 python -m goldtrack events query --region 中东 --json
 

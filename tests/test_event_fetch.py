@@ -3,6 +3,7 @@ from datetime import date
 from goldtrack.db import Database
 from goldtrack.sources.base import RetryPolicy
 from goldtrack.events.fetch import collect_events, resolve_range
+from goldtrack.events.gdelt import GdeltError, GdeltPermanentError
 from goldtrack.events.models import GeoEvent
 
 
@@ -80,3 +81,59 @@ def test_collect_events_calls_each_day_and_records_failure(tmp_path, monkeypatch
     assert len(summary.failures) == 1
     assert summary.failures[0].day == date(2026, 10, 31)
     assert "boom" in summary.failures[0].error
+
+
+def test_collect_events_does_not_retry_permanent_errors(tmp_path, monkeypatch):
+    from goldtrack.events import fetch as fetch_module
+
+    monkeypatch.setattr(fetch_module, "_yesterday_utc", lambda: date(2026, 11, 1))
+    db = Database(tmp_path / "gold.db").init()
+    calls = []
+    sleeps = []
+    day = date(2026, 10, 30)
+
+    def fake_fetch(requested):
+        calls.append(requested)
+        raise GdeltPermanentError("missing")
+
+    summary = collect_events(
+        db,
+        start=day,
+        end=day,
+        retry=RetryPolicy(attempts=3, base_delay=1.0),
+        fetch_day=fake_fetch,
+        sleep=sleeps.append,
+    )
+
+    assert calls == [day]
+    assert sleeps == []
+    assert len(summary.failures) == 1
+    assert "missing" in summary.failures[0].error
+
+
+def test_collect_events_retries_transient_errors(tmp_path, monkeypatch):
+    from goldtrack.events import fetch as fetch_module
+
+    monkeypatch.setattr(fetch_module, "_yesterday_utc", lambda: date(2026, 11, 1))
+    db = Database(tmp_path / "gold.db").init()
+    calls = []
+    sleeps = []
+    day = date(2026, 10, 30)
+
+    def fake_fetch(requested):
+        calls.append(requested)
+        raise GdeltError("temporary")
+
+    summary = collect_events(
+        db,
+        start=day,
+        end=day,
+        retry=RetryPolicy(attempts=3, base_delay=1.0),
+        fetch_day=fake_fetch,
+        sleep=sleeps.append,
+    )
+
+    assert len(calls) == 3
+    assert sleeps == [1.0, 2.0]
+    assert len(summary.failures) == 1
+    assert "temporary" in summary.failures[0].error
