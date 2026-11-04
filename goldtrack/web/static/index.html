@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>黄金与地缘事件 · 数据工作台</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">Au</div>
+      <div>
+        <h1>黄金与地缘事件 · 数据工作台</h1>
+        <p class="sub">本机数据浏览 · 指标 · 事件叠加 · 采集管理</p>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <span id="data-stamp" class="pill">数据加载中…</span>
+      <span class="pill muted">仅本机</span>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="summary-grid" id="summary"></section>
+
+    <nav class="tabs" role="tablist" aria-label="页面切换">
+      <button class="tab is-active" data-tab="prices" role="tab">走势与指标</button>
+      <button class="tab" data-tab="events" role="tab">事件叠加</button>
+      <button class="tab" data-tab="data" role="tab">数据管理</button>
+    </nav>
+
+    <section class="tab-panel is-active" id="tab-prices">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>价格走势</h2>
+            <p class="hint">收盘价与 MA5 / MA20 / MA60；下方为日涨跌幅与 20 日年化波动率。滚轮或滑块可缩放。</p>
+          </div>
+          <div class="controls">
+            <label class="control">品种
+              <select id="price-symbol"></select>
+            </label>
+            <div class="range-group" id="price-range">
+              <button data-days="30">30日</button>
+              <button data-days="90">90日</button>
+              <button data-days="180" class="is-active">180日</button>
+              <button data-days="365">365日</button>
+              <button data-days="0">全部</button>
+            </div>
+            <label class="control date">起 <input type="date" id="price-start"></label>
+            <label class="control date">止 <input type="date" id="price-end"></label>
+            <button class="primary" id="price-apply">应用区间</button>
+          </div>
+        </div>
+        <div class="stats" id="price-stats"></div>
+        <div class="chart chart-price" id="price-chart"></div>
+        <p class="note" id="price-note"></p>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-events">
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>金价 × 地缘事件</h2>
+            <p class="hint">气泡大小=事件强度，颜色=事件类型；下方为地区事件时间轴。叠加图只展示每个交易日最强事件，完整记录见下方列表。</p>
+          </div>
+          <div class="controls">
+            <label class="control">品种
+              <select id="overlay-symbol"></select>
+            </label>
+            <div class="range-group" id="overlay-range">
+              <button data-days="30">30日</button>
+              <button data-days="90" class="is-active">90日</button>
+              <button data-days="180">180日</button>
+              <button data-days="365">365日</button>
+            </div>
+            <label class="control">最低等级
+              <select id="overlay-level"></select>
+            </label>
+            <label class="control date">起 <input type="date" id="overlay-start"></label>
+            <label class="control date">止 <input type="date" id="overlay-end"></label>
+            <button class="primary" id="overlay-apply">应用区间</button>
+          </div>
+        </div>
+        <div class="stats" id="overlay-stats"></div>
+        <div class="chart chart-overlay" id="overlay-chart"></div>
+        <div class="legend" id="overlay-legend"></div>
+        <p class="note">强度为规则分（0–100），用于排序与展示，不代表因果影响。数据源：GDELT + 新浪财经。</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>事件列表</h2>
+            <p class="hint">服务端分页与筛选；日期按事件发生日，市场日为对齐后的交易日。</p>
+          </div>
+          <div class="filters">
+            <label class="control date">起 <input type="date" id="event-start"></label>
+            <label class="control date">止 <input type="date" id="event-end"></label>
+            <label class="control">地区
+              <select id="event-region"><option value="">全部</option></select>
+            </label>
+            <label class="control">等级
+              <select id="event-level"></select>
+            </label>
+            <label class="control">类型
+              <select id="event-type"><option value="">全部</option></select>
+            </label>
+            <label class="control">关键词
+              <input type="search" id="event-q" placeholder="摘要 / 国家 / 类型">
+            </label>
+            <button class="primary" id="event-apply">筛选</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>日期</th><th>市场日</th><th>地区</th><th>类型</th>
+                <th>等级</th><th class="num">强度</th><th>国家</th><th>摘要</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="event-rows">
+              <tr><td colspan="9" class="empty">加载中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button id="event-prev" disabled>上一页</button>
+          <span id="event-page" class="page-note">—</span>
+          <button id="event-next" disabled>下一页</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="tab-data">
+      <div id="active-job"></div>
+
+      <div class="panel-grid">
+        <div class="panel">
+          <h2>价格采集</h2>
+          <form id="prices-form" class="job-form">
+            <div class="field">
+              <span class="field-label">品种</span>
+              <div class="check-row" id="price-symbols"></div>
+            </div>
+            <div class="field">
+              <span class="field-label">方式</span>
+              <div class="radio-row">
+                <label><input type="radio" name="price-mode" value="incremental" checked> 增量（推荐）</label>
+                <label><input type="radio" name="price-mode" value="full"> 全量重采</label>
+              </div>
+            </div>
+            <div class="field two">
+              <label>起始（可选）<input type="date" id="collect-price-start"></label>
+              <label>结束（可选）<input type="date" id="collect-price-end"></label>
+            </div>
+            <button class="primary" type="submit">开始价格采集</button>
+            <p class="hint">增量从库内最新日期前 5 天续采；全量会重新拉取全部历史，耗时更长。</p>
+          </form>
+        </div>
+
+        <div class="panel">
+          <h2>事件采集</h2>
+          <form id="events-form" class="job-form">
+            <div class="field">
+              <span class="field-label">方式</span>
+              <select id="collect-events-mode">
+                <option value="incremental">增量（从库内最新源日期续采）</option>
+                <option value="backfill">补采最近 N 天</option>
+                <option value="range">自定义区间</option>
+              </select>
+            </div>
+            <div class="field" id="collect-events-days-field">
+              <label>天数 <input type="number" id="collect-events-days" min="1" max="365" value="30"></label>
+            </div>
+            <div class="field two" id="collect-events-range-field" hidden>
+              <label>起始<input type="date" id="collect-events-start"></label>
+              <label>结束<input type="date" id="collect-events-end"></label>
+            </div>
+            <button class="primary" type="submit">开始事件采集</button>
+            <p class="hint">GDELT 日文件通常在次日提供；单日失败只记录，不中断其余日期。大范围补采需要数分钟。</p>
+          </form>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>采集状态</h2><p class="hint">最近成功/失败来自记录在库的运行历史；cron 任务也通过脚本记录。</p></div>
+          <button class="ghost" id="status-refresh">刷新</button>
+        </div>
+        <div class="status-grid" id="status-cards"></div>
+      </div>
+
+      <div class="panel">
+        <h2>运行记录</h2>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr><th>#</th><th>类型</th><th>状态</th><th>开始</th><th class="num">耗时</th><th>进度</th><th>结果 / 错误</th></tr>
+            </thead>
+            <tbody id="run-rows">
+              <tr><td colspan="7" class="empty">暂无记录</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="/static/vendor/echarts.min.js"></script>
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>

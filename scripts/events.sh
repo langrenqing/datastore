@@ -11,5 +11,5 @@ cd "$(dirname "$0")/.."
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 mkdir -p logs output/charts
 
-"$PYTHON_BIN" -m goldtrack events fetch "$@" >> logs/events.log 2>&1
+"$PYTHON_BIN" -m goldtrack events fetch --record-run "$@" >> logs/events.log 2>&1
 "$PYTHON_BIN" -m goldtrack events chart --symbol XAU >> logs/events.log 2>&1

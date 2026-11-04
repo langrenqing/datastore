@@ -13,7 +13,7 @@ from typing import Sequence
 
 from . import config
 from .chart import default_chart_path, plot_chart
-from .db import Database
+from .db import CollectionBusy, Database
 from .events.alignment import align_events, as_date, trading_days
 from .events.analysis import WINDOWS, compute_event_impacts, summarize_impacts
 from .events.chart import default_event_chart_path, plot_event_chart
@@ -24,6 +24,7 @@ from .fetch import collect_all
 from .instruments import DEFAULT_SYMBOLS, INSTRUMENTS, get_instrument
 from .indicators import bars_to_frame, compute_indicators
 from .report import build_report
+from .runs import event_params, price_params, run_events, run_prices
 from .sources import available_sources
 from .sources.base import RetryPolicy
 from .text import render_table
@@ -275,14 +276,38 @@ def cmd_run(args) -> int:
     db = _db(args)
     db.init(INSTRUMENTS.values())
     retry = RetryPolicy(attempts=args.retries, base_delay=args.retry_delay)
-    results = collect_all(
-        db,
-        args.symbols,
-        full=args.full,
-        start=args.start,
-        end=args.end,
-        retry=retry,
-    )
+    run_id = None
+    if getattr(args, "record_run", False):
+        try:
+            run_id = db.create_run(
+                "prices",
+                price_params(
+                    args.symbols, full=args.full, start=args.start, end=args.end
+                ),
+                source="cli",
+            )
+        except CollectionBusy as exc:
+            print(f"跳过采集：{exc}")
+            return 0
+    if run_id is not None:
+        results = run_prices(
+            db,
+            run_id,
+            symbols=args.symbols,
+            full=args.full,
+            start=args.start,
+            end=args.end,
+            retry=retry,
+        )
+    else:
+        results = collect_all(
+            db,
+            args.symbols,
+            full=args.full,
+            start=args.start,
+            end=args.end,
+            retry=retry,
+        )
     code = _print_fetch_results(results)
 
     print()
@@ -351,17 +376,50 @@ def _event_record(event, market_date: date | None) -> dict:
 def cmd_events_fetch(args) -> int:
     db = _db(args)
     retry = RetryPolicy(attempts=args.retries, base_delay=args.retry_delay)
-    summary = collect_events(
-        db,
-        start=args.start,
-        end=args.end,
-        days=args.days,
-        min_sources=args.min_sources,
-        global_min_sources=args.global_min_sources,
-        all_countries=args.all_countries,
-        min_intensity=args.min_intensity,
-        retry=retry,
-    )
+    run_id = None
+    if getattr(args, "record_run", False):
+        try:
+            run_id = db.create_run(
+                "events",
+                event_params(
+                    start=args.start,
+                    end=args.end,
+                    days=args.days,
+                    min_sources=args.min_sources,
+                    global_min_sources=args.global_min_sources,
+                    all_countries=args.all_countries,
+                    min_intensity=args.min_intensity,
+                ),
+                source="cli",
+            )
+        except CollectionBusy as exc:
+            print(f"跳过采集：{exc}")
+            return 0
+    if run_id is not None:
+        summary = run_events(
+            db,
+            run_id,
+            start=args.start,
+            end=args.end,
+            days=args.days,
+            min_sources=args.min_sources,
+            global_min_sources=args.global_min_sources,
+            all_countries=args.all_countries,
+            min_intensity=args.min_intensity,
+            retry=retry,
+        )
+    else:
+        summary = collect_events(
+            db,
+            start=args.start,
+            end=args.end,
+            days=args.days,
+            min_sources=args.min_sources,
+            global_min_sources=args.global_min_sources,
+            all_countries=args.all_countries,
+            min_intensity=args.min_intensity,
+            retry=retry,
+        )
     if not summary.results:
         print("事件采集：没有需要更新的日期（GDELT 日文件通常在次日提供）。")
     else:
@@ -578,6 +636,18 @@ def cmd_events_windows(args) -> int:
     return 0
 
 
+def cmd_web(args) -> int:
+    """Start the local Web UI (same app as ``python -m goldtrack.web``)."""
+    import uvicorn
+
+    from .web.app import create_app
+
+    app = create_app(args.db)
+    print(f"goldtrack Web UI: http://{args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="goldtrack",
@@ -635,6 +705,11 @@ def build_parser() -> argparse.ArgumentParser:
     chart_parser.add_argument("--chart-dir", default=str(config.DEFAULT_CHART_DIR))
     chart_parser.set_defaults(func=cmd_chart)
 
+    web_parser = subparsers.add_parser("web", help="启动本机 Web UI")
+    web_parser.add_argument("--host", default="127.0.0.1", help="监听地址（默认仅本机）")
+    web_parser.add_argument("--port", type=int, default=8000, help="监听端口")
+    web_parser.set_defaults(func=cmd_web)
+
     report_parser = subparsers.add_parser("report", help="打印最新趋势报告")
     report_parser.add_argument(
         "--symbols", type=_parse_symbols, default=list(DEFAULT_SYMBOLS)
@@ -645,6 +720,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_fetch_options(run_parser)
     run_parser.add_argument("--days", type=_positive_int, default=config.DEFAULT_CHART_DAYS)
     run_parser.add_argument("--chart-dir", default=str(config.DEFAULT_CHART_DIR))
+    run_parser.add_argument(
+        "--record-run",
+        action="store_true",
+        help="记录采集运行状态，供 Web UI 查看（cron 脚本使用）",
+    )
     run_parser.set_defaults(func=cmd_run)
 
     events_parser = subparsers.add_parser("events", help="地缘政治事件（GDELT）")
@@ -678,6 +758,11 @@ def build_parser() -> argparse.ArgumentParser:
     event_fetch.add_argument("--retries", type=_positive_int, default=3, help="每天重试次数")
     event_fetch.add_argument(
         "--retry-delay", type=_non_negative_float, default=1.0, help="首次重试等待秒数"
+    )
+    event_fetch.add_argument(
+        "--record-run",
+        action="store_true",
+        help="记录采集运行状态，供 Web UI 查看（cron 脚本使用）",
     )
     event_fetch.set_defaults(func=cmd_events_fetch)
 

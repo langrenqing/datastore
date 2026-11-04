@@ -1,0 +1,42 @@
+Web UI 视觉证据与验证记录
+==========================
+
+基线（Before）：master 69dee86。仓库只有 CLI 与静态 PNG 输出，没有 Web UI。
+- docs/screenshots/before-web-prices.png
+  master 代码执行 `python -m goldtrack chart --symbol XAU --days 180`，使用同一真实 SQLite。
+- docs/screenshots/before-web-events-30d.png
+  master 代码执行 `python -m goldtrack events chart --symbol XAU --days 30`，同一数据库。
+说明：这是 greenfield，不存在旧版 Web 页面，因此没有可截图的旧 Web 视口；上面是 master 的真实静态输出，
+不是用 mockup 冒充旧实现。
+
+本 PR（After）：Chromium headless，1440px 宽，真实 SQLite。
+- docs/screenshots/after-web-prices.png
+  走势与指标，XAU 180 个交易日（2026-02-24 ~ 2026-11-03）。
+- docs/screenshots/after-web-events-30d.png
+  事件叠加，XAU 30 个交易日（2026-09-23 ~ 2026-11-03）；19,543 条对齐事件，聚合为每日最强 27 个、
+  地区×交易日 172 个时间轴点。
+- docs/screenshots/after-web-data.png
+  数据管理：价格任务成功（run #4，XAU +4），事件任务部分成功（run #3，29/30 天，最后一天超时）。
+  未运行的品种（AU9999/AU0/GC）不继承 XAU 的成功记录，显示「—」。
+
+真实数据（2026-11-03）：
+- XAU：5,184 根日线，来自新浪财经，最新 2026-11-03。
+- GDELT：23,519 条关注事件，覆盖 2026-10-04 ~ 2026-11-01。为验证只抓取了最近 30 天中的 29 天；
+  最后一天下载超时，运行记录如实保留为「部分成功」。
+
+验证：
+- `python -m pytest -q`：95 passed（离线；含 FastAPI TestClient 的 API、任务状态与 CLI 记录测试）。
+- 浏览器操作：三个标签切换、价格 30/90/180/365/全部与自定义区间、事件 30 日与自定义区间、
+  事件列表筛选/分页、采集表单模式切换均正常；浏览器控制台无错误。
+- 手动采集：通过 Web API 触发价格任务，子进程执行、进度与摘要写入 collection_runs，页面轮询并
+  在完成后刷新数据（run #4 成功）。
+- 接口实测（本机，2.3 万事件）：/api/status ~0.25s；/api/prices?symbol=XAU&days=180 ~0.24s / 44KB；
+  /api/events?days=30&limit=50 ~0.04s；/api/events/overlay?days=90 ~0.56s / 112KB。
+
+冲突解决（2026-11-04）：
+- 已 rebase 到 master 369e1e8（包含 PR #10 的 review 修复与 PR #13 的架构文档）。
+- db.py：采用 master 的 SQLite 30s busy_timeout + synchronous=NORMAL + WAL；保留本 PR 的
+  collection_runs 表、运行状态方法与轻量事件分页/叠加查询。
+- events/fetch.py：合并 master 的 retry_if=gdelt.is_retryable 重试分类与本 PR 的 on_day 进度回调。
+- README：保留 master 的事件 limit 说明与 Web UI 章节。
+- rebase 后 `pytest`：95 passed。

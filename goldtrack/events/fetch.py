@@ -62,6 +62,7 @@ def collect_events(
     retry: RetryPolicy | None = None,
     fetch_day: RowFetcher | None = None,
     sleep: Callable[[float], None] | None = None,
+    on_day: Callable[[int, int, DayFetchResult], None] | None = None,
 ) -> EventFetchSummary:
     """Fetch daily GDELT files from ``start`` to ``end`` and upsert events.
 
@@ -76,7 +77,8 @@ def collect_events(
     if first > last:
         return summary
 
-    for offset in range((last - first).days + 1):
+    total_days = (last - first).days + 1
+    for offset in range(total_days):
         day = first + timedelta(days=offset)
         try:
             if sleep is None:
@@ -95,7 +97,10 @@ def collect_events(
         except SourceError as exc:
             message = f"{day.isoformat()} 获取失败: {exc}"
             logger.warning(message)
-            summary.results.append(DayFetchResult(day=day, parsed=0, error=message))
+            result = DayFetchResult(day=day, parsed=0, error=message)
+            summary.results.append(result)
+            if on_day is not None:
+                on_day(offset + 1, total_days, result)
             continue
 
         events = gdelt.build_events(
@@ -110,9 +115,10 @@ def collect_events(
         logger.info(
             "%s parsed=%s relevant=%s stored=%s", day, len(rows), len(events), stored
         )
-        summary.results.append(
-            DayFetchResult(
-                day=day, parsed=len(rows), relevant=len(events), stored=stored
-            )
+        result = DayFetchResult(
+            day=day, parsed=len(rows), relevant=len(events), stored=stored
         )
+        summary.results.append(result)
+        if on_day is not None:
+            on_day(offset + 1, total_days, result)
     return summary
