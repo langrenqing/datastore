@@ -25,10 +25,18 @@ Web UI 视觉证据与验证记录
   最后一天下载超时，运行记录如实保留为「部分成功」。
 
 验证：
-- `python -m pytest -q`：84 passed（离线；含 FastAPI TestClient 的 API、任务状态与 CLI 记录测试）。
+- `python -m pytest -q`：95 passed（离线；含 FastAPI TestClient 的 API、任务状态与 CLI 记录测试）。
 - 浏览器操作：三个标签切换、价格 30/90/180/365/全部与自定义区间、事件 30 日与自定义区间、
   事件列表筛选/分页、采集表单模式切换均正常；浏览器控制台无错误。
 - 手动采集：通过 Web API 触发价格任务，子进程执行、进度与摘要写入 collection_runs，页面轮询并
   在完成后刷新数据（run #4 成功）。
 - 接口实测（本机，2.3 万事件）：/api/status ~0.25s；/api/prices?symbol=XAU&days=180 ~0.24s / 44KB；
   /api/events?days=30&limit=50 ~0.04s；/api/events/overlay?days=90 ~0.56s / 112KB。
+
+冲突解决（2026-11-04）：
+- 已 rebase 到 master 369e1e8（包含 PR #10 的 review 修复与 PR #13 的架构文档）。
+- db.py：采用 master 的 SQLite 30s busy_timeout + synchronous=NORMAL + WAL；保留本 PR 的
+  collection_runs 表、运行状态方法与轻量事件分页/叠加查询。
+- events/fetch.py：合并 master 的 retry_if=gdelt.is_retryable 重试分类与本 PR 的 on_day 进度回调。
+- README：保留 master 的事件 limit 说明与 Web UI 章节。
+- rebase 后 `pytest`：95 passed。
