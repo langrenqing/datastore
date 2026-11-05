@@ -416,6 +416,8 @@
   .lanes.panel{border:1px solid var(--line);border-radius:14px;padding:20px 24px;background:rgba(255,253,248,.5);gap:18px}
   .lanes-head{font-size:16px;font-weight:600;color:var(--ink);margin-bottom:0}
   .lane-chip{font-size:16.5px;padding:11px 16px}
+  .defwords{margin-top:14px}
+  .defwords b{color:var(--accent);font-weight:600;margin:0 2px}
   /* ---------- hud ---------- */
   #hud{
     position:absolute;left:46px;right:46px;bottom:20px;
@@ -565,7 +567,7 @@
           <p>一条低风险流程、六个度量、两周验证。</p>
         </div>
       </div>
-      <div class="callout"><span class="tag">主线</span><span>一条 GitHub issue，从被评论到被合入：Part 1 用它讲痛点，Part 2 用它讲机制，Part 3 用它做 demo。</span></div>
+      <div class="callout"><span class="tag">主线</span><span>一条 GitHub issue，从被评论到被合入：第一部分用它讲痛点，第二部分用它讲机制，第三部分用它做 demo。</span></div>
     </div>
     <aside class="notes">
       <p>先框住预期：Why、What、How 三个问题；主线是一条 issue 从被评论到被合入。今天不讲模型训练、prompt 技巧和工具评测。</p>
@@ -665,7 +667,8 @@
     <div class="s-head">
       <p class="kicker">Why · 定义</p>
       <h2>什么是 Super-agent？</h2>
-      <p class="lede">一个能同时推进多项任务、跨会话保持上下文、<br>被环境事件唤醒、并且能长期在线的 Agent 系统。</p>
+      <p class="lede">一个能跨会话保持上下文、同时推进多项任务、<br>被环境事件唤醒、并且能长期在线的 Agent 系统。</p>
+      <p class="small defwords">四个特点：<b>连续</b> · <b>高效</b> · <b>主动</b> · <b>持久</b></p>
     </div>
     <div class="s-body">
       <div class="split wide-left">
@@ -697,7 +700,7 @@
       <p class="small">先建立直觉；这些角色的正式名字——Router、Worker、Thread、Watchdog——在第二部分展开。</p>
     </div>
     <aside class="notes">
-      <p>先用这张图建立直觉，不要在这一页抛 Router、Worker、Thread 这些词；点明「人只定目标和验收」。告诉听众正式名字从下一页开始给。</p>
+      <p>先用这张图建立直觉，不要在这一页抛 Router、Worker、Thread 这些词；点明「人只定目标和验收」。告诉听众正式名字从第二部分开始给。</p>
     </aside>
   </section>
 
@@ -708,14 +711,14 @@
     <p class="lede">每一段解决前一段留下的问题；顺序不能换。</p>
     <div class="qmap">
       <div class="qcard">
-        <span class="n">01 吞吐</span>
+        <span class="n">01 分层</span>
         <h3>同时跑多个任务，<br>怎么不互相拖垮？</h3>
-        <p class="ans">分层隔离 · Router / Worker</p>
+        <p class="ans">Router / Worker · 上下文隔离</p>
       </div>
       <div class="qcard">
-        <span class="n">02 连续</span>
+        <span class="n">02 事件</span>
         <h3>任务从哪来，<br>上下文怎么接上？</h3>
-        <p class="ans">事件与上下文 · Trigger / Thread</p>
+        <p class="ans">Trigger / Thread · 订阅</p>
       </div>
       <div class="qcard">
         <span class="n">03 交互</span>
@@ -725,7 +728,7 @@
       <div class="qcard">
         <span class="n">04 持久</span>
         <h3>机器挂了、跑偏了，<br>怎么办？</h3>
-        <p class="ans">分离 + Watchdog</p>
+        <p class="ans">计算 / 状态 / 环境 + Watchdog</p>
       </div>
     </div>
     <p class="chainnote">没有隔离，事件一多就互相拖垮；没有上下文，事件接不上；没有交互，人还是得等；没有持久，前面都白搭。</p>
@@ -790,7 +793,7 @@
         </div>
         <div class="routebig">
           <div class="routebig-row">
-            <span class="routebig-label">新 Thread</span>
+            <span class="routebig-label">新任务</span>
             <span class="rb-line"><span class="rb-node accent">Router 冷启动</span><span class="rb-arrow">→</span><span class="rb-node">建 Worker + 订阅</span></span>
           </div>
           <div class="routebig-row">
@@ -939,7 +942,7 @@
       <div class="flow journey">
         <div class="step"><b>评论 / 事件</b><small>人提出请求</small><span class="badge">人</span></div>
         <div class="arrow">→</div>
-        <div class="step"><b>过滤 + 研判</b><small>按策略决定是否接受</small><span class="badge rule">规则授权</span></div>
+        <div class="step"><b>过滤 + 评估</b><small>按策略决定是否接受</small><span class="badge rule">规则授权</span></div>
         <div class="arrow">→</div>
         <div class="step"><b>Thread + 订阅</b><small>后续消息自动送达</small></div>
         <div class="arrow">→</div>
@@ -953,18 +956,18 @@
         <div class="callout"><span class="tag">看人</span><span>人只出现在两头：请求、验收；中间靠授权范围与规则。</span></div>
         <div class="callout alt"><span class="tag">兜底</span><span>Watchdog 定时检查死锁 / 偏离目标；订阅让后续讨论不用再 @ 一次。</span></div>
       </div>
-      <p class="small">这条链路就是 Part 3 的 demo 脚本；demo 里会刻意展示一次纠偏。</p>
+      <p class="small">这条链路就是第三部分的 demo 脚本；demo 里会刻意展示一次纠偏。</p>
     </div>
     <aside class="notes">
-      <p>把前面四段串成一条链路，指出人只出现在两头——请求与验收，中间靠授权范围与规则。这条链路就是 Part 3 的 demo 脚本。</p>
+      <p>把前面四段串成一条链路，指出人只出现在两头——请求与验收，中间靠授权范围与规则。这条链路就是第三部分的 demo 脚本。</p>
     </aside>
   </section>
 
   <!-- 15 recap -->
-  <section class="slide" data-section="What · 回顾" data-title="回顾：四个承诺，四条机制">
+  <section class="slide" data-section="What · 回顾" data-title="回顾：四个特点，四条机制">
     <div class="s-head">
       <p class="kicker">What · 回顾</p>
-      <h2>四个承诺，四条机制</h2>
+      <h2>四个特点，四条机制</h2>
     </div>
     <div class="s-body">
       <div class="defs">
@@ -973,10 +976,10 @@
         <div class="def"><b>主动</b><span class="to">→</span><span class="mech">Trigger 事件驱动</span><small>评论、CI、群消息都能唤醒</small></div>
         <div class="def"><b>持久</b><span class="to">→</span><span class="mech">计算 / 状态 / 环境分离 + Watchdog</span><small>换容器、换机器也能继续</small></div>
       </div>
-      <div class="callout"><span class="tag">回扣</span><span>四个承诺不是四个功能，而是四段互相依赖的机制；缺一段，另外三段都会退化。</span></div>
+      <div class="callout"><span class="tag">小结</span><span>四个特点不是四个功能，而是四组互相依赖的机制；缺一块，其他几块都会退化。</span></div>
     </div>
     <aside class="notes">
-      <p>四个承诺现在都有机制对应：连续靠 Thread 与上下文，高效靠分层与直投，主动靠 Trigger，持久靠三者分离与 Watchdog。强调不是四个功能，而是四段互相依赖；缺一段，另外三段会退化。</p>
+      <p>四个特点现在都有机制对应：连续靠 Thread 与上下文，高效靠分层与直投，主动靠 Trigger，持久靠三者分离与 Watchdog。强调不是四个功能，而是四组互相依赖的机制；缺一块，其他几块会退化。</p>
     </aside>
   </section>
 
@@ -1096,7 +1099,7 @@
       <p class="small">先测两周基线，再谈提升；没有基线就只做定性复盘，不要宣称「效率提升」。</p>
     </div>
     <aside class="notes">
-      <p>六个指标先测基线；没有基线就只做定性复盘，不要宣称效率提升。表里的目标值是示例，不是承诺。</p>
+      <p>六个指标先测基线；没有基线就只做定性复盘，不要宣称效率提升。表里的目标值是示例，不是硬性指标。</p>
     </aside>
   </section>
 
@@ -1166,10 +1169,10 @@
   </section>
 
   <!-- 23 closing -->
-  <section class="slide closing dark" data-section="收尾" data-title="三个 takeaway，一个 ask">
+  <section class="slide closing dark" data-section="收尾" data-title="三个结论，一个行动">
     <div class="s-head">
       <p class="kicker">收尾</p>
-      <h2>三个 takeaway，一个 ask</h2>
+      <h2>三个结论，一个行动</h2>
     </div>
     <div class="s-body">
       <ul class="pts">
@@ -1178,12 +1181,12 @@
         <li><b>先用度量证明，再扩大。</b>两周基线，六个指标，达不到就停。</li>
       </ul>
       <div class="ask">
-        <span class="tag">Ask</span>
+        <span class="tag">下一步</span>
         <p>选一条低风险、高频的流程，指定 owner，做两周试点；下次评审只看数据，不看演示。</p>
       </div>
     </div>
     <aside class="notes">
-      <p>三个 takeaway 各一句话；落到一个明确 ask——一条流程、一个 owner、两周。下次评审只看数据，不看演示。</p>
+      <p>三个结论各一句话；落到一个明确行动——一条流程、一个 owner、两周。下次评审只看数据，不看演示。</p>
       <p><b>Q&amp;A 预判：</b>成本失控？代码/凭据出域？换模型还行吗？岗位影响？和现有 CI/PR 流程冲突？答不上来的记下来，会后补数据。</p>
     </aside>
   </section>
