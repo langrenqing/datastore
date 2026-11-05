@@ -358,6 +358,64 @@
   .pwatch{display:flex;align-items:center;gap:14px;border:1px dashed var(--line);border-radius:12px;padding:12px 18px;font-size:15px;line-height:1.45;color:var(--muted)}
   .pwatch .badge{flex:0 0 auto}
 
+
+  /* ---------- part 2 map ---------- */
+  .whatmap .num{font-size:92px;margin-bottom:6px}
+  .whatmap h2{font-size:50px;margin-bottom:12px}
+  .whatmap .lede{font-size:21px;max-width:1040px}
+  .qmap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px;width:100%}
+  .qcard{border:1px solid rgba(245,241,232,.16);background:rgba(255,255,255,.05);border-radius:14px;padding:18px 18px 16px}
+  .qcard .n{font:600 11px/1 var(--mono);letter-spacing:.14em;color:#d98a6f;text-transform:uppercase}
+  .qcard h3{font-size:20px;line-height:1.4;color:var(--paper);margin:10px 0 12px;font-weight:600}
+  .qcard .ans{font-size:14px;line-height:1.45;color:#e8b9a8}
+  .chainnote{margin-top:22px;font-size:14px;line-height:1.6;color:var(--dark-muted)}
+
+  /* ---------- events big ---------- */
+  .pipe{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(255,253,248,.55)}
+  .pipe-node{flex:1;text-align:center;font-size:15px;font-weight:600;line-height:1.3}
+  .pipe-node small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:3px}
+  .pipe-arrow{color:var(--muted);font-size:14px;flex:0 0 auto}
+  .eventbig{display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center}
+  .threadbig,.routebig{border:1px solid var(--line);border-radius:14px;padding:22px 26px;background:rgba(255,253,248,.5)}
+  .tb-head{font-size:20px;font-weight:600;margin-bottom:28px}
+  .tb-track{display:flex;align-items:center;padding:0 10px 58px}
+  .tb-dot{position:relative;width:22px;height:22px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+  .tb-dot i{position:absolute;top:30px;left:50%;transform:translateX(-50%);font:600 13px/1 var(--mono);font-style:normal;color:var(--accent)}
+  .tb-dot b{position:absolute;top:50px;left:50%;transform:translateX(-50%);font-size:16px;font-weight:500;white-space:nowrap;color:var(--ink)}
+  .tb-seg{flex:1;height:3px;background:var(--line)}
+  .routebig{display:flex;flex-direction:column;gap:14px}
+  .routebig-row{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center}
+  .routebig-label{font:600 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .rb-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rb-node{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:13px 18px;font-size:17px}
+  .rb-node.accent{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .rb-arrow{color:var(--muted);font-size:16px}
+
+  /* ---------- context big ---------- */
+  .ctxbig{display:grid;grid-template-columns:1fr 100px 1fr;gap:18px;align-items:stretch}
+  .ctxbig-panel{border-radius:14px;padding:22px 26px;border:1px solid var(--line);min-height:190px}
+  .ctxbig-panel.win{border-color:var(--accent);background:var(--accent-soft)}
+  .ctxbig-panel.store{border-style:dashed;background:rgba(255,253,248,.55)}
+  .ctxbig-panel .ctx-tag{font-size:12px}
+  .ctx-sub{font-size:15px;color:var(--muted);margin:9px 0 14px}
+  .ctx-chips.big span{font-size:16px;padding:7px 14px}
+  .ctxbig-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:22px}
+  .ctxbig-mid small{font-size:11px;line-height:1.35;text-align:center;margin-top:6px}
+  .ctx-foot{margin-top:18px;font-size:13px;color:var(--muted)}
+  .chainline{border-top:1px solid var(--line);padding-top:18px}
+  .chainline > .ctx-tag{display:block;margin-bottom:12px}
+  .chain.big{width:100%}
+  .chain.big .chain-chip{flex:1;text-align:center;padding:14px 12px;font-size:17px}
+  .chain.big .to{flex:0 0 auto;font-size:18px}
+
+
+  .arch .node{min-width:260px;padding:16px 26px}
+  .arch .node.main{min-width:420px}
+  .arch .workers{width:760px}
+  .arch .workers .node{padding:14px 18px}
+  .lanes.panel{border:1px solid var(--line);border-radius:14px;padding:20px 24px;background:rgba(255,253,248,.5);gap:18px}
+  .lanes-head{font-size:16px;font-weight:600;color:var(--ink);margin-bottom:0}
+  .lane-chip{font-size:16.5px;padding:11px 16px}
   /* ---------- hud ---------- */
   #hud{
     position:absolute;left:46px;right:46px;bottom:20px;
@@ -510,7 +568,7 @@
       <div class="callout"><span class="tag">主线</span><span>一条 GitHub issue，从被评论到被合入：Part 1 用它讲痛点，Part 2 用它讲机制，Part 3 用它做 demo。</span></div>
     </div>
     <aside class="notes">
-      <p>先亮主线，后面每次讲抽象机制都拉回这条 issue。今天不讲模型训练、prompt 技巧和工具评测。</p>
+      <p>先框住预期：Why、What、How 三个问题；主线是一条 issue 从被评论到被合入。今天不讲模型训练、prompt 技巧和工具评测。</p>
     </aside>
   </section>
 
@@ -519,7 +577,9 @@
     <div class="num">01</div>
     <h2>瓶颈不在模型，<br>在人的注意力。</h2>
     <p class="lede">单任务上限取决于模型能力；多任务上限取决于人能同时关注多少。</p>
-    <aside class="notes"><p>这一部分控制在 10 分钟。先把「为什么现在需要新架构」讲透，再进机制。</p></aside>
+    <aside class="notes">
+      <p>这一部分 10 分钟。核心论点：单任务上限是模型，多任务上限是人的注意力。先把「为什么需要新架构」讲透，再进机制。</p>
+    </aside>
   </section>
 
   <!-- 04 pain -->
@@ -544,7 +604,7 @@
       <p class="small">现场可以做个小调查：你现在同时开着几个 Session？其中几个是真的在推进？</p>
     </div>
     <aside class="notes">
-      <p>3–5 个是原文里的观察值，讲的时候说「经验上」。可以现场举手，比给一个假精确的数字更有说服力。</p>
+      <p>先问现场「你现在同时开着几个 Session」，再给 3–5 这个经验值，强调是观察不是数据。三个症状各举一个身边的例子，最后念原文那句话。</p>
     </aside>
   </section>
 
@@ -576,7 +636,7 @@
       <div class="callout"><span class="tag">结论</span><span>多 Agent ≠ Super-agent。前者优化任务内部，后者组织任务之间；Personal Agent 与 Super-agent 也不是替代关系。</span></div>
     </div>
     <aside class="notes">
-      <p>Claude Code 那类讨论的是任务内部怎么少交接、少丢信息；DSH 讨论的是一组任务怎么并行推进、让人少操心。用两条轴讲，避免听成「一代取代一代」。</p>
+      <p>任务内能力解决「一次任务做深」，任务间组织解决「一组任务并行」。Claude Code 那类讨论前者，DSH 讨论后者；避免听成一代取代一代。多 Agent ≠ Super-agent。</p>
     </aside>
   </section>
 
@@ -596,7 +656,7 @@
       <div class="callout"><span class="tag">判断</span><span>缺任何一项，Super-agent 都只能停留在演示；四项同时成熟，才值得在团队里试。</span></div>
     </div>
     <aside class="notes">
-      <p>这一页回答「为什么不是去年」。四个变化缺一不可，尤其异步运行时和沙箱，常被忽略。</p>
+      <p>四项变化缺一不可，重点讲异步运行时与沙箱，这两项常被忽略。没有它们，Super-agent 只能停留在演示。</p>
     </aside>
   </section>
 
@@ -637,16 +697,41 @@
       <p class="small">先建立直觉；这些角色的正式名字——Router、Worker、Thread、Watchdog——在第二部分展开。</p>
     </div>
     <aside class="notes">
-      <p>先用这张图建立直觉：人只定目标和验收，中间是常驻协调者，下面是互不干扰的执行者。不要在这一页抛术语；名字留到第二部分再给。</p>
+      <p>先用这张图建立直觉，不要在这一页抛 Router、Worker、Thread 这些词；点明「人只定目标和验收」。告诉听众正式名字从下一页开始给。</p>
     </aside>
   </section>
 
-  <!-- 08 divider what -->
-  <section class="slide divider dark" data-section="What" data-title="第二部分：机制">
+  <!-- 08 overview what -->
+  <section class="slide divider dark whatmap" data-section="What" data-title="第二部分：四段机制，四个问题">
     <div class="num">02</div>
-    <h2>机制是一条因果链，<br>不是功能清单。</h2>
-    <p class="lede">四段：分层隔离 → 事件与上下文 → 交互 → 持久与自愈。每段都回答「解决什么、代价是什么」。</p>
-    <aside class="notes"><p>20–25 分钟。四段之间是因果顺序，不是并列功能；每段讲完都回到那条 issue。</p></aside>
+    <h2>四段机制，四个问题</h2>
+    <p class="lede">每一段解决前一段留下的问题；顺序不能换。</p>
+    <div class="qmap">
+      <div class="qcard">
+        <span class="n">01 吞吐</span>
+        <h3>同时跑多个任务，<br>怎么不互相拖垮？</h3>
+        <p class="ans">分层隔离 · Router / Worker</p>
+      </div>
+      <div class="qcard">
+        <span class="n">02 连续</span>
+        <h3>任务从哪来，<br>上下文怎么接上？</h3>
+        <p class="ans">事件与上下文 · Trigger / Thread</p>
+      </div>
+      <div class="qcard">
+        <span class="n">03 交互</span>
+        <h3>人怎么在过程中<br>插话，而不被阻塞？</h3>
+        <p class="ans">异步 ReAct · 全双工</p>
+      </div>
+      <div class="qcard">
+        <span class="n">04 持久</span>
+        <h3>机器挂了、跑偏了，<br>怎么办？</h3>
+        <p class="ans">分离 + Watchdog</p>
+      </div>
+    </div>
+    <p class="chainnote">没有隔离，事件一多就互相拖垮；没有上下文，事件接不上；没有交互，人还是得等；没有持久，前面都白搭。</p>
+    <aside class="notes">
+      <p>这是第二部分的路线图。按顺序问四个问题：同时跑多个任务怎么不互相拖垮（分层）；任务从哪来、上下文怎么接（事件与 Thread）；人怎么插话（异步）；挂了怎么办（分离 + Watchdog）。四段是依赖关系，不是四个并列功能。每讲完一段，回到同一条 issue。</p>
+    </aside>
   </section>
 
   <!-- 09 dual layer -->
@@ -669,7 +754,7 @@
       <p class="small">代价：Worker 之间不共享上下文，靠 Thread、订阅与链式召回补；跨任务取舍仍是 Router 的责任。</p>
     </div>
     <aside class="notes">
-      <p>先纠正一个常见误解：Router 不是所有消息的必经之路。它只在冷启动和跨任务协调时出现；日常消息由程序按订阅直接投递。</p>
+      <p>先纠正「所有消息都过 Router」的误解：Router 只做冷启动与跨任务协调，过滤后的消息直接投 Worker。代价是 Worker 之间不共享上下文，靠 Thread 与链式召回补。</p>
     </aside>
   </section>
 
@@ -680,36 +765,37 @@
       <h2>从「推一下动一下」到「环境触发」</h2>
     </div>
     <div class="s-body">
-      <div class="flow">
-        <div class="step"><b>Trigger</b><small>群消息 / PR 评论 / CI 结果 / 邮件</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>程序过滤</b><small>Fast Path：大多数噪音死在这里</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>语义判断</b><small>Slow Path：LLM 按策略判断是否行动</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>Thread / 订阅</b><small>一条 Trigger 是点，一串相关 Trigger 是线</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>Worker</b><small>已订阅直投；新 Thread 才走 Router</small></div>
+      <div class="pipe">
+        <span class="pipe-node">Trigger<small>评论 / CI / 群消息</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">程序过滤<small>Fast Path</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">语义判断<small>Slow Path</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">归入 Thread<small>一串事件</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">路由<small>新 / 已订阅</small></span>
       </div>
-      <div class="eventgrid">
-        <div class="tviz">
-          <div class="tv-track">
-            <span class="tv-dot"><i>T1 评论</i></span>
-            <span class="tv-seg"></span>
-            <span class="tv-dot"><i>T2 CI</i></span>
-            <span class="tv-seg"></span>
-            <span class="tv-dot"><i>T3 review</i></span>
+      <div class="eventbig">
+        <div class="threadbig">
+          <div class="tb-head">Thread：一串 Trigger 是一条线</div>
+          <div class="tb-track">
+            <span class="tb-dot"><i>T1</i><b>评论</b></span>
+            <span class="tb-seg"></span>
+            <span class="tb-dot"><i>T2</i><b>CI 失败</b></span>
+            <span class="tb-seg"></span>
+            <span class="tb-dot"><i>T3</i><b>review</b></span>
           </div>
           <p class="small">同一条线共享上下文；一个 Worker 可以同时订阅多条线。</p>
         </div>
-        <div class="routes">
-          <div class="route-row">
-            <span class="route-label">新 Thread</span>
-            <span class="route-line"><span class="route-chip">Router 冷启动</span><span class="to">→</span><span class="route-chip">建 Worker + 订阅</span></span>
+        <div class="routebig">
+          <div class="routebig-row">
+            <span class="routebig-label">新 Thread</span>
+            <span class="rb-line"><span class="rb-node accent">Router 冷启动</span><span class="rb-arrow">→</span><span class="rb-node">建 Worker + 订阅</span></span>
           </div>
-          <div class="route-row">
-            <span class="route-label">已订阅</span>
-            <span class="route-line"><span class="route-chip">程序直投</span><span class="to">→</span><span class="route-chip">Worker</span></span>
+          <div class="routebig-row">
+            <span class="routebig-label">已订阅</span>
+            <span class="rb-line"><span class="rb-node">程序直投</span><span class="rb-arrow">→</span><span class="rb-node">Worker</span></span>
           </div>
           <p class="small">只有新任务经过 Router；日常消息直接到执行者。</p>
         </div>
@@ -717,7 +803,7 @@
       <p class="tiny">「Fast / Slow」在原文里有两套含义：过滤的两层、路由的两条；讲的时候分开说。</p>
     </div>
     <aside class="notes">
-      <p>这一页是全场的机制核心。先讲过滤，再讲 Thread 与订阅，最后强调 Router 只在冷启动出现；顺手把 Fast/Slow 的两种用法区分开。</p>
+      <p>先讲两层过滤：程序先筛、语义再判；再讲 Thread 是一条线、订阅决定后续消息去哪。两条路由分开讲：新 Thread 走 Router，已订阅直接投。最后提醒 Fast/Slow 有两套含义，别混。</p>
     </aside>
   </section>
 
@@ -728,34 +814,35 @@
       <h2>窗口就那么大：Inline、Spill 与链式召回</h2>
     </div>
     <div class="s-body">
-      <div class="split even" style="gap:42px">
-        <div class="ctxpanel">
-          <div class="ctx-window">
-            <span class="ctx-tag">上下文窗口 · Inline</span>
-            <div class="ctx-chips"><span>当前任务</span><span>最近消息</span><span>引用 / 摘要</span></div>
-          </div>
-          <div class="ctx-arrow">↑ 按需读回</div>
-          <div class="ctx-store">
-            <span class="ctx-tag">Spill · 档案柜</span>
-            <div class="ctx-chips"><span>完整日志</span><span>历史文档</span><span>旧结果</span></div>
-          </div>
-          <p class="small">手边放常用的，其余留引用——窗口就那么大。</p>
+      <div class="ctxbig">
+        <div class="ctxbig-panel win">
+          <span class="ctx-tag">上下文窗口 · Inline</span>
+          <p class="ctx-sub">手边常用的，直接放进来</p>
+          <div class="ctx-chips big"><span>当前任务</span><span>最近消息</span><span>引用 / 摘要</span></div>
+          <p class="ctx-foot">窗口预算有限，越常用越靠前。</p>
         </div>
-        <div>
-          <div class="ctx-tag" style="margin-bottom:12px">Chain of Recall</div>
-          <div class="chain">
-            <span class="chain-chip">群消息<i>「昨天那个问题…」</i></span>
-            <span class="to">→</span>
-            <span class="chain-chip">Thread</span>
-            <span class="to">→</span>
-            <span class="chain-chip">Worker</span>
-            <span class="to">→</span>
-            <span class="chain-chip">PR</span>
-            <span class="to">→</span>
-            <span class="chain-chip">修改记录</span>
-          </div>
-          <p class="small" style="margin-top:14px">每个对象带下一跳的 ID：不靠一个大记忆库，而是一张可实时渲染的引用图。</p>
+        <div class="ctxbig-mid">⇄<small>按需读回 / 放回</small></div>
+        <div class="ctxbig-panel store">
+          <span class="ctx-tag">Spill · 档案柜</span>
+          <p class="ctx-sub">低频、完整的信息，留引用</p>
+          <div class="ctx-chips big"><span>完整日志</span><span>历史文档</span><span>旧结果</span></div>
+          <p class="ctx-foot">只留引用，读回时才占窗口。</p>
         </div>
+      </div>
+      <div class="chainline">
+        <span class="ctx-tag">Chain of Recall</span>
+        <div class="chain big">
+          <span class="chain-chip">群消息<i>「昨天那个问题…」</i></span>
+          <span class="to">→</span>
+          <span class="chain-chip">Thread</span>
+          <span class="to">→</span>
+          <span class="chain-chip">Worker</span>
+          <span class="to">→</span>
+          <span class="chain-chip">PR</span>
+          <span class="to">→</span>
+          <span class="chain-chip">修改记录</span>
+        </div>
+        <p class="small" style="margin-top:12px">每个对象带下一跳的 ID：不靠大记忆库，靠一张可实时渲染的引用图。</p>
       </div>
       <div class="split even" style="gap:24px">
         <div class="callout"><span class="tag">差别</span><span>和 OS 不同：内核自动处理缺页；LLM 得自己意识到缺什么，再去读。</span></div>
@@ -763,7 +850,7 @@
       </div>
     </div>
     <aside class="notes">
-      <p>Inline/Spill 用「工作台 + 档案柜」比喻即可，不要展开成分页算法。链式召回用群聊里那句问话举例，比画引用图更直观。投机执行要讲清「没价值就丢弃」，否则听起来像魔法。</p>
+      <p>用工作台与档案柜比喻 Inline/Spill；强调和 OS 换页的差别——LLM 得自己知道缺什么。链式召回用「群里问一句」的例子；投机执行讲清「没价值就丢弃」。</p>
     </aside>
   </section>
 
@@ -775,7 +862,8 @@
     </div>
     <div class="s-body">
       <p class="small" style="font-family:var(--mono);color:var(--ink)">run()：阻塞到结果返回　→　start()：立即返回，继续 loop</p>
-      <div class="lanes">
+      <div class="lanes panel">
+        <div class="lanes-head">同一会话，两条时间线</div>
         <div class="lane">
           <span class="lane-label">前台</span>
           <div class="lane-track">
@@ -794,6 +882,14 @@
             <span class="lane-chip back">提 PR</span>
           </div>
         </div>
+        <div class="lane">
+          <span class="lane-label">回传</span>
+          <div class="lane-track">
+            <span class="lane-chip back">任务完成</span><span class="to">→</span>
+            <span class="lane-chip back">通知前台</span><span class="to">→</span>
+            <span class="lane-chip back">人查看</span>
+          </div>
+        </div>
       </div>
       <div class="split even" style="gap:24px">
         <div class="callout alt"><span class="tag">代价</span><span>乱序、取消、部分结果、状态一致性，都要额外设计。</span></div>
@@ -801,7 +897,7 @@
       </div>
     </div>
     <aside class="notes">
-      <p>别把异步 ReAct 说成模型升级；它是会话运行时的事。顺便提一句 Claude Code 和 ChatGPT 也有类似能力，只是叫法不同。</p>
+      <p>run() 阻塞 vs start() 立即返回；两条时间线说明前台对话不被后台任务挡住。代价是乱序、取消、部分结果；现状是 DSH 已实现、未默认开启，说明它是运行时能力，不是模型能力。</p>
     </aside>
   </section>
 
@@ -829,7 +925,7 @@
       </div>
     </div>
     <aside class="notes">
-      <p>存算分离借的是数据库术语，这里实际是计算/状态/环境三者分离，标题写全。BYOM 首次出现给全称。信任前提单独强调，别一带而过。</p>
+      <p>环境、计算、状态三者分开：容器挂了换一个、状态还在；本地环境不搬上云的原因要讲透。强调云端与端侧互信是前提。Watchdog 看的是 LLM 死锁或偏离目标，不只是进程存活，而且自己也烧 token。</p>
     </aside>
   </section>
 
@@ -860,7 +956,7 @@
       <p class="small">这条链路就是 Part 3 的 demo 脚本；demo 里会刻意展示一次纠偏。</p>
     </div>
     <aside class="notes">
-      <p>这一页把前面四段机制串成一条线。强调「人只出现在两头」，这是后面「注意力预算」的伏笔。</p>
+      <p>把前面四段串成一条链路，指出人只出现在两头——请求与验收，中间靠授权范围与规则。这条链路就是 Part 3 的 demo 脚本。</p>
     </aside>
   </section>
 
@@ -880,7 +976,7 @@
       <div class="callout"><span class="tag">回扣</span><span>四个承诺不是四个功能，而是四段互相依赖的机制；缺一段，另外三段都会退化。</span></div>
     </div>
     <aside class="notes">
-      <p>到这里四个词都有机制对应了：连续靠 Thread 与上下文管理，高效靠分层与直投，主动靠 Trigger，持久靠三者分离与 Watchdog。下一页进 Part 3。</p>
+      <p>四个承诺现在都有机制对应：连续靠 Thread 与上下文，高效靠分层与直投，主动靠 Trigger，持久靠三者分离与 Watchdog。强调不是四个功能，而是四段互相依赖；缺一段，另外三段会退化。</p>
     </aside>
   </section>
 
@@ -889,7 +985,9 @@
     <div class="num">03</div>
     <h2>怎么落到我们团队？</h2>
     <p class="lede">先选一条低风险、高频的流程，用两周证明它值得扩大。</p>
-    <aside class="notes"><p>15 分钟，含 demo。重点是试点路径、度量和边界，不铺开讲部署细节。</p></aside>
+    <aside class="notes">
+      <p>这一部分 15 分钟，含 demo。先选一条低风险、高频的流程，用两周证明它值得扩大；部署细节不铺开讲。</p>
+    </aside>
   </section>
 
   <!-- 17 roles -->
@@ -922,7 +1020,7 @@
       <div class="callout"><span class="tag">约束</span><span>review 容量决定自动化上限。review 变成新瓶颈，就是失败——不是成功。</span></div>
     </div>
     <aside class="notes">
-      <p>不要说「人只要点通过」。人保留的是判断和责任；Agent 承担的是执行和整理。review 容量是硬约束，先算这个再谈并发。</p>
+      <p>人保留判断与责任，Agent 承担执行与整理。review 容量决定自动化上限；review 变成新瓶颈，就是失败，不是成功。</p>
     </aside>
   </section>
 
@@ -942,7 +1040,7 @@
       <p class="small">原型对应：评估（Eval）决定接不接受，授权（Mandate）限定范围，订阅（Subscription）决定后续消息送给谁。</p>
     </div>
     <aside class="notes">
-      <p>这页讲制度，不讲技术。重点是「少打扰」不是靠模型自觉，而是靠名单、闸门、预算和审计这四件事。</p>
+      <p>把「少打扰」做成制度：谁能触发、什么必须批、通知预算、审计。原型对应评估 Eval、授权 Mandate、订阅 Subscription——制度是「少打扰」的基础，不是靠模型自觉。</p>
     </aside>
   </section>
 
@@ -973,7 +1071,7 @@
       <div class="callout"><span class="tag">节奏</span><span>每一步：2 周试点 + 明确 owner + 回滚开关。没达到退出条件，就不进入下一步。</span></div>
     </div>
     <aside class="notes">
-      <p>不要按「先做 CI、再做事件、最后 Watchdog」的技术顺序讲，听众会以为是能力清单。按风险和价值的顺序，每一步都有前置条件和退出条件。</p>
+      <p>按价值与风险排序，不按技术栈。每一步写清前置条件、度量与退出条件；节奏是两周试点 + 明确 owner + 回滚开关，没达到条件就不进下一步。</p>
     </aside>
   </section>
 
@@ -998,7 +1096,7 @@
       <p class="small">先测两周基线，再谈提升；没有基线就只做定性复盘，不要宣称「效率提升」。</p>
     </div>
     <aside class="notes">
-      <p>目标值是示例，不是承诺。关键是先有基线。没有基线时，只做定性复盘，别拿感觉当数据。</p>
+      <p>六个指标先测基线；没有基线就只做定性复盘，不要宣称效率提升。表里的目标值是示例，不是承诺。</p>
     </aside>
   </section>
 
@@ -1034,7 +1132,7 @@
       <div class="callout alt"><span class="tag">声明</span><span>dsh-superagent 是研究原型，不是官方产品；部分设计尚未实现。把它当参考实现，而不是可直接投产的软件。</span></div>
     </div>
     <aside class="notes">
-      <p>这一页主动说「什么时候不该用」，比只讲优点更能建立信任。原型免责声明要念出来，避免听众误以为已经产品化。</p>
+      <p>主动说什么时候不该用，比只讲优点更能建立信任。失败模式与护栏一一对应；最后念出原型免责声明，避免听众误以为已经可以投产。</p>
       <p><b>Demo（8 分钟）：</b>贴一条评论 → 分诊 → 开 PR（改代码 + 跑测试）→ 人 review（故意展示一次纠偏）→ 合入并回写原线程。三个人工介入点：请求、review、合入。提前录屏兜底，现场失败就放录像；不要为炫技跑复杂任务。</p>
     </aside>
   </section>
@@ -1063,7 +1161,7 @@
       </div>
     </div>
     <aside class="notes">
-      <p>术语表是给会后翻阅的，讲的时候不用逐条念；口头上尽量用「触发、线程、工单」这些中文词。</p>
+      <p>术语表给会后翻阅，不逐条念；口头上尽量用「触发、线程、工单」这些中文词。</p>
     </aside>
   </section>
 
@@ -1085,7 +1183,7 @@
       </div>
     </div>
     <aside class="notes">
-      <p>结束在一个具体请求上：不是「大家回去试试」，而是「选一条流程、一个 owner、两周」。这样会议才有下一步。</p>
+      <p>三个 takeaway 各一句话；落到一个明确 ask——一条流程、一个 owner、两周。下次评审只看数据，不看演示。</p>
       <p><b>Q&amp;A 预判：</b>成本失控？代码/凭据出域？换模型还行吗？岗位影响？和现有 CI/PR 流程冲突？答不上来的记下来，会后补数据。</p>
     </aside>
   </section>
@@ -1119,7 +1217,7 @@
       </div>
     </div>
     <aside class="notes">
-      <p>时间不够时优先砍 What 里的细节，保留 Why 的注意力和 How 的试点。Demo 不要砍到没有纠偏。</p>
+      <p>60 分钟版本的时间分配；45 分钟版压缩 What、删掉术语表逐条讲，Demo 保持 6–8 分钟。材料可打印为 PDF，单文件离线可开。</p>
     </aside>
   </section>
 
