@@ -871,61 +871,11 @@
     </div>
     <aside class="notes">
       <p>这一页主动说「什么时候不该用」，比只讲优点更能建立信任。原型免责声明要念出来，避免听众误以为已经产品化。</p>
+      <p><b>Demo（8 分钟）：</b>贴一条评论 → 分诊 → 开 PR（改代码 + 跑测试）→ 人 review（故意展示一次纠偏）→ 合入并回写原线程。三个人工介入点：请求、review、合入。提前录屏兜底，现场失败就放录像；不要为炫技跑复杂任务。</p>
     </aside>
   </section>
 
-  <!-- 21 demo -->
-  <section class="slide" data-section="How · Demo" data-title="8 分钟，只跑最短路径">
-    <div class="s-head">
-      <p class="kicker">How · Demo</p>
-      <h2>8 分钟，只跑最短路径</h2>
-    </div>
-    <div class="s-body">
-      <div class="demo-head"><span class="clock">08:00<small>目标时长</small></span><p class="small" style="max-width:560px">现场只演示一条链路；提前录屏兜底，现场失败就放录像，不硬撑。</p></div>
-      <div class="flow">
-        <div class="step"><b>贴一条评论</b><small>触发</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>分诊</b><small>判断值不值得做</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>开 PR</b><small>改代码 + 跑测试</small></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>人 review</b><small>故意展示一次纠偏</small><span class="badge">人</span></div>
-        <div class="arrow">→</div>
-        <div class="step"><b>合入</b><small>回写原线程</small><span class="badge">人</span></div>
-      </div>
-      <ul class="pts compact">
-        <li>展示 Web 面板：哪些事项需要人处理——呼应「少占用注意力」。</li>
-        <li>刻意保留一次失败或纠正：人怎么发现、怎么让 Agent 改，比全程顺滑更有说服力。</li>
-        <li>把 demo 放在 Part 3 开头，作为「怎么做」的锚点，而不是最后彩蛋。</li>
-      </ul>
-    </div>
-    <aside class="notes">
-      <p>演示脚本提前走一遍，特别是失败场景。现场只跑最短路径；录屏放在手边。不要为了炫技跑复杂任务。</p>
-    </aside>
-  </section>
-
-  <!-- 22 qa -->
-  <section class="slide" data-section="Q&A" data-title="大概率会被问到的五个问题">
-    <div class="s-head">
-      <p class="kicker">Q &amp; A</p>
-      <h2>大概率会被问到的五个问题</h2>
-    </div>
-    <div class="s-body">
-      <div class="qa">
-        <div class="qa-item"><span class="n">01</span><div><b>成本会不会失控？</b><p>单任务预算 + 熔断 + 按流程限额；先测基线再谈优化。</p></div></div>
-        <div class="qa-item"><span class="n">02</span><div><b>代码和凭据出域怎么办？</b><p>环境留在本地（BYOM）、最小权限、沙箱、审计；云端与端侧互信是前提。</p></div></div>
-        <div class="qa-item"><span class="n">03</span><div><b>换一个模型还能跑吗？</b><p>Inline/Spill 这类机制更依赖模型「知道自己缺什么」，换模型效果会变；要重测。</p></div></div>
-        <div class="qa-item"><span class="n">04</span><div><b>工程师的岗位会怎样？</b><p>执行变少、判断变多；review 与架构判断更值钱，不是「不需要人」。</p></div></div>
-        <div class="qa-item"><span class="n">05</span><div><b>和现有 CI / PR 流程冲突吗？</b><p>不替代，只是多一个「自动发起 + 自动执行」的参与者；分支保护与 CODEOWNERS 照旧。</p></div></div>
-      </div>
-      <p class="small">答不上来的记下来，会后补数据——比现场编一个强。</p>
-    </div>
-    <aside class="notes">
-      <p>这五个是预判，不必逐条念。挑两个现场最可能被问的展开，其余留给 Q&amp;A。</p>
-    </aside>
-  </section>
-
-  <!-- 23 glossary -->
+  <!-- 21 glossary -->
   <section class="slide" data-section="附录" data-title="术语表">
     <div class="s-head">
       <p class="kicker">附录</p>
@@ -953,7 +903,7 @@
     </aside>
   </section>
 
-  <!-- 24 closing -->
+  <!-- 22 closing -->
   <section class="slide closing dark" data-section="收尾" data-title="三个 takeaway，一个 ask">
     <div class="s-head">
       <p class="kicker">收尾</p>
@@ -972,10 +922,11 @@
     </div>
     <aside class="notes">
       <p>结束在一个具体请求上：不是「大家回去试试」，而是「选一条流程、一个 owner、两周」。这样会议才有下一步。</p>
+      <p><b>Q&amp;A 预判：</b>成本失控？代码/凭据出域？换模型还行吗？岗位影响？和现有 CI/PR 流程冲突？答不上来的记下来，会后补数据。</p>
     </aside>
   </section>
 
-  <!-- 25 refs -->
+  <!-- 23 refs -->
   <section class="slide" data-section="附录" data-title="参考资料与时间分配">
     <div class="s-head">
       <p class="kicker">附录</p>
