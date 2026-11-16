@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="Super-agent 内部分享：面向工程团队的高效交付。单文件 HTML 演示稿，支持键盘翻页、全屏、总览、备注、计时与打印。">
+<title>Super-agent：面向工程团队的高效交付</title>
+<style>
+  /* ---------- tokens ---------- */
+  :root{
+    --paper:#f5f1e8;
+    --paper-2:#efe9dc;
+    --ink:#1b1916;
+    --muted:#6f675c;
+    --line:#d8cfc0;
+    --accent:#b23a26;
+    --accent-soft:#f0dcd5;
+    --dark:#191714;
+    --dark-muted:#b7ada0;
+    --white:#fffdf8;
+    --sans:"PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,-apple-system,sans-serif;
+    --mono:"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+    --scale:1;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%}
+  body{
+    background:#0e0d0c;
+    color:var(--ink);
+    font-family:var(--sans);
+    font-feature-settings:"palt" 1;
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:inherit;text-decoration:none;border-bottom:1px solid rgba(178,58,38,.4)}
+  a:hover{border-bottom-color:var(--accent)}
+
+  /* ---------- stage ---------- */
+  #stage{
+    position:absolute;
+    top:50%;left:50%;
+    width:1600px;height:900px;
+    transform:translate(-50%,-50%) scale(var(--scale));
+    transform-origin:center center;
+    background:var(--paper);
+    box-shadow:0 40px 120px rgba(0,0,0,.45);
+    overflow:hidden;
+  }
+  #progress{
+    position:absolute;top:0;left:0;height:3px;width:100%;
+    background:var(--accent);
+    transform:scaleX(0);transform-origin:left;
+    z-index:45;transition:transform .25s ease;
+  }
+
+  /* ---------- slides ---------- */
+  .slide{
+    position:absolute;inset:0;
+    display:flex;flex-direction:column;
+    padding:72px 88px 64px;
+    background:var(--paper);
+    opacity:0;visibility:hidden;pointer-events:none;
+    transition:opacity .22s ease;
+  }
+  .slide.active{opacity:1;visibility:visible;pointer-events:auto}
+  .slide.dark{background:var(--dark);color:var(--paper)}
+  .slide.dark .muted,.slide.dark .lede{color:var(--dark-muted)}
+  .slide.dark .kicker{color:#d98a6f}
+  .slide.dark a{border-bottom-color:rgba(217,138,111,.5)}
+  .notes{display:none}
+
+  .s-head{flex:0 0 auto}
+  .s-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:26px;min-height:0;padding-top:30px}
+  .s-body.top{justify-content:flex-start}
+
+  .kicker{
+    margin:0 0 18px;
+    font:600 14px/1.4 var(--mono);
+    letter-spacing:.18em;text-transform:uppercase;
+    color:var(--accent);
+    display:flex;align-items:center;gap:12px;
+  }
+  .kicker::before{content:"";width:30px;height:1px;background:currentColor;flex:0 0 auto}
+
+  h1,h2,h3,p{margin:0}
+  h1{font-size:78px;line-height:1.04;font-weight:650;letter-spacing:-.025em;text-wrap:balance}
+  h2{font-size:48px;line-height:1.14;font-weight:640;letter-spacing:-.02em;text-wrap:balance}
+  h3{font-size:23px;line-height:1.35;font-weight:600;text-wrap:balance}
+  .lede{font-size:23px;line-height:1.55;color:var(--muted);max-width:980px}
+  .small{font-size:16px;line-height:1.55;color:var(--muted)}
+  .tiny{font-size:13px;line-height:1.5;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .accent{color:var(--accent)}
+  .dim{color:var(--dark-muted)}
+
+  /* ---------- cover ---------- */
+  .cover{padding:84px 96px}
+  .cover .s-head{display:flex;flex-direction:column;justify-content:center;height:100%}
+  .cover h1{margin:10px 0 26px}
+  .cover .lede{font-size:26px;max-width:1100px}
+  .cover-meta{display:flex;gap:28px;align-items:center;margin-top:38px;font:500 14px/1 var(--mono);letter-spacing:.1em;color:var(--dark-muted)}
+  .cover-meta span{display:flex;align-items:center;gap:10px}
+  .cover-meta span::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  .hint{margin-top:46px;font:500 12px/1.6 var(--mono);letter-spacing:.06em;color:rgba(183,173,160,.72)}
+  .hint kbd{font:inherit;color:#e8dfd2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:1px 5px;margin:0 1px}
+
+  /* ---------- divider ---------- */
+  .divider{justify-content:center}
+  .divider .num{font:600 130px/1 var(--mono);color:rgba(245,241,232,.13);letter-spacing:-.04em;margin-bottom:18px}
+  .divider h2{font-size:62px;line-height:1.12;max-width:1150px;margin-bottom:22px}
+  .divider .lede{font-size:24px;max-width:900px}
+
+  /* ---------- generic blocks ---------- */
+  .cards{display:grid;gap:18px}
+  .cards.two{grid-template-columns:1fr 1fr}
+  .cards.three{grid-template-columns:repeat(3,1fr)}
+  .cards.four{grid-template-columns:repeat(4,1fr)}
+  .card{
+    background:rgba(255,253,248,.72);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:22px 24px;
+  }
+  .card h3{margin-bottom:8px}
+  .card p,.card li{font-size:17px;line-height:1.55;color:var(--muted)}
+  .card ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px}
+  .card .idx{font:600 13px/1 var(--mono);letter-spacing:.12em;color:var(--accent);display:block;margin-bottom:10px}
+
+  ul.pts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
+  ul.pts>li{position:relative;padding-left:26px;font-size:21px;line-height:1.5}
+  ul.pts>li::before{content:"";position:absolute;left:2px;top:.64em;width:7px;height:7px;border-radius:50%;background:var(--accent)}
+  ul.pts>li small{display:block;font-size:16px;color:var(--muted);margin-top:3px;padding-left:0}
+  ul.pts.compact>li{font-size:19px}
+
+  .callout{
+    display:flex;gap:14px;align-items:flex-start;
+    background:var(--accent-soft);
+    border-left:4px solid var(--accent);
+    border-radius:0 12px 12px 0;
+    padding:16px 20px;
+    font-size:19px;line-height:1.5;
+  }
+  .callout b{font-weight:600}
+  .callout span:last-child{text-wrap:pretty}
+  .callout .tag{flex:0 0 auto;font:600 12px/1.6 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);padding-top:3px}
+  .callout.alt{background:rgba(25,23,20,.05);border-left-color:var(--ink)}
+  .callout.alt .tag{color:var(--ink)}
+  .slide.dark .callout{background:rgba(255,255,255,.07);border-left-color:var(--accent);color:var(--paper)}
+  .slide.dark .callout .tag{color:#d98a6f}
+
+  .split{display:grid;grid-template-columns:1.25fr .75fr;gap:52px;align-items:center}
+  .split.even{grid-template-columns:1fr 1fr}
+  .split.wide-left{grid-template-columns:1.5fr 1fr}
+
+  /* ---------- pain points ---------- */
+  .symptoms{display:flex;flex-direction:column;gap:20px}
+  .symptom{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:baseline;padding-bottom:18px;border-bottom:1px solid var(--line)}
+  .symptom:last-child{border-bottom:0;padding-bottom:0}
+  .symptom b{font-size:20px}
+  .symptom span{font-size:18px;line-height:1.5;color:var(--muted)}
+  .stat{text-align:left}
+  .stat .big{font:650 104px/.95 var(--sans);letter-spacing:-.05em;color:var(--accent)}
+  .stat .big small{font-size:30px;letter-spacing:0;color:var(--ink)}
+  .stat .cap{font-size:17px;line-height:1.5;color:var(--muted);margin-top:10px;max-width:280px}
+  .quote{margin-top:26px;padding-left:18px;border-left:2px solid var(--accent);font-size:20px;line-height:1.55}
+  .quote small{display:block;margin-top:6px;font-size:14px;color:var(--muted)}
+
+  /* ---------- axes ---------- */
+  .axes{display:flex;flex-direction:column;gap:24px}
+  .axis{border:1px solid var(--line);border-radius:14px;padding:22px 26px;background:rgba(255,253,248,.6)}
+  .axis-h{display:flex;align-items:baseline;justify-content:space-between;gap:20px;margin-bottom:14px}
+  .axis-h b{font-size:21px}
+  .axis-h span{font-size:15px;color:var(--muted)}
+  .steps{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .pill{display:inline-block;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:18px}
+  .pill.hot{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .to{color:var(--muted);font-size:18px}
+
+  /* ---------- flow ---------- */
+  .flow{display:flex;align-items:stretch;gap:8px}
+  .flow .step{
+    flex:1 1 0;min-width:0;
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:16px 12px;
+    display:flex;flex-direction:column;gap:6px;
+  }
+  .flow .step b{font-size:17px;line-height:1.3}
+  .flow .step small{font-size:13px;line-height:1.4;color:var(--muted)}
+  .flow .step .badge{align-self:flex-start;margin-top:2px}
+  .flow .arrow{flex:0 0 18px;align-self:center;text-align:center;color:var(--muted);font-size:18px}
+  .flow.journey .step{padding:18px 14px}
+  .flow.journey .step b{font-size:18px}
+
+  .badge{
+    display:inline-block;
+    font:600 11px/1 var(--mono);letter-spacing:.1em;
+    color:var(--accent);
+    border:1px solid currentColor;
+    border-radius:999px;
+    padding:4px 8px;
+  }
+  .badge.rule{color:var(--muted)}
+  .badge.bot{color:#2f6b4f;border-color:#2f6b4f}
+
+  /* ---------- architecture diagram ---------- */
+  .arch{display:flex;flex-direction:column;align-items:center;gap:10px;padding:6px 0}
+  .arch .node{
+    background:var(--white);border:1px solid var(--line);border-radius:12px;
+    padding:14px 22px;text-align:center;min-width:230px;
+  }
+  .arch .node b{display:block;font-size:19px}
+  .arch .node small{display:block;font-size:13px;color:var(--muted);margin-top:4px}
+  .arch .node.main{border-color:var(--accent);background:var(--accent-soft)}
+  .arch .node.main b{color:var(--accent)}
+  .arch .fan{color:var(--muted);font-size:16px;line-height:1}
+  .arch .workers{display:flex;gap:16px}
+  .arch .workers .node{min-width:0;flex:1;padding:12px 16px}
+  .arch .workers .node b{font-size:16px}
+
+  /* ---------- definitions ---------- */
+  .defs{display:flex;flex-direction:column;border-top:1px solid var(--line)}
+  .def{display:grid;grid-template-columns:86px 26px 1.15fr 1fr;gap:14px;align-items:center;padding:18px 2px;border-bottom:1px solid var(--line)}
+  .def>b{font-size:22px;letter-spacing:.02em}
+  .def .to{font-size:18px}
+  .def .mech{font-size:19px}
+  .def small{font-size:15px;line-height:1.45;color:var(--muted);text-align:right}
+
+  /* ---------- layers ---------- */
+  .layers{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .layer{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .layer .tag{font:600 12px/1 var(--mono);letter-spacing:.12em;color:var(--accent)}
+  .layer b{display:block;font-size:19px;margin:8px 0 4px}
+  .layer small{font-size:14px;line-height:1.45;color:var(--muted)}
+
+  /* ---------- table ---------- */
+  table.metrics{width:100%;border-collapse:collapse;font-size:18px}
+  table.metrics th,table.metrics td{text-align:left;padding:13px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  table.metrics th{font:600 12px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding-top:0}
+  table.metrics td strong{font-weight:600}
+  table.metrics td small{display:block;font-size:13px;color:var(--muted);margin-top:2px}
+  table.metrics tr:last-child td{border-bottom:0}
+
+  table.fail{width:100%;border-collapse:collapse;font-size:17px}
+  table.fail th,table.fail td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}
+  table.fail th{font:600 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+  table.fail td:first-child{color:var(--ink);white-space:nowrap}
+  table.fail td:last-child{color:var(--muted)}
+
+  /* ---------- demo ---------- */
+  .demo-head{display:flex;align-items:baseline;gap:22px}
+  .demo-head .clock{font:650 56px/1 var(--mono);letter-spacing:-.03em;color:var(--accent)}
+  .demo-head .clock small{font-size:18px;color:var(--muted);letter-spacing:0;margin-left:6px}
+
+  /* ---------- qa ---------- */
+  .qa{display:flex;flex-direction:column;gap:14px}
+  .qa-item{display:grid;grid-template-columns:44px 1fr;gap:18px;align-items:start;padding:14px 0;border-bottom:1px solid var(--line)}
+  .qa-item:last-child{border-bottom:0}
+  .qa-item .n{font:600 15px/1 var(--mono);color:var(--accent);padding-top:4px}
+  .qa-item b{font-size:20px;font-weight:600}
+  .qa-item p{font-size:16px;color:var(--muted);line-height:1.5;margin-top:4px}
+
+  /* ---------- glossary ---------- */
+  .glossary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 26px}
+  .term{border-bottom:1px solid var(--line);padding-bottom:10px}
+  .term b{display:block;font-size:16px;font-weight:600}
+  .term span{display:block;font-size:14px;line-height:1.45;color:var(--muted);margin-top:3px}
+
+  /* ---------- closing ---------- */
+  .closing .pts li{font-size:23px}
+  .ask{margin-top:34px;border:1px solid rgba(217,138,111,.45);border-radius:14px;padding:22px 26px;max-width:1000px}
+  .ask .tag{font:600 12px/1 var(--mono);letter-spacing:.16em;color:#d98a6f;text-transform:uppercase;display:block;margin-bottom:10px}
+  .ask p{font-size:21px;line-height:1.5}
+
+  /* ---------- references ---------- */
+  .refs{display:flex;flex-direction:column;gap:14px}
+  .ref{display:flex;gap:14px;font-size:17px;line-height:1.5}
+  .ref .n{flex:0 0 26px;font:600 13px/1.7 var(--mono);color:var(--accent)}
+  .ref .u{display:block;font-size:13px;color:var(--muted);margin-top:2px;word-break:break-all;border-bottom:0}
+  .ref .u:hover{color:var(--accent)}
+  .timebar{display:flex;height:16px;border-radius:999px;overflow:hidden;border:1px solid var(--line);margin-top:8px}
+  .timebar i{display:block;height:100%}
+  .timebar .t1{background:#b23a26}
+  .timebar .t2{background:#c9765f}
+  .timebar .t3{background:#d8a58f}
+  .timebar .t4{background:#8a7f72}
+  .timelegend{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-top:10px;gap:12px;flex-wrap:wrap}
+  .timelegend span{display:flex;align-items:center;gap:6px}
+  .timelegend i{width:8px;height:8px;border-radius:2px;display:inline-block}
+
+
+  /* ---------- diagrams: definition / events / context / lanes / persistence ---------- */
+  .s-head .lede{margin-top:14px}
+  .defmap{width:100%;display:flex;flex-direction:column;align-items:center}
+  .dm-row{display:flex;justify-content:center}
+  .dm-node{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:13px 18px;text-align:center;min-width:150px}
+  .dm-node b{display:block;font-size:18px;font-weight:600}
+  .dm-node small{display:block;font-size:12.5px;line-height:1.35;color:var(--muted);margin-top:3px}
+  .dm-node.person{min-width:180px;background:var(--ink);border-color:var(--ink);color:var(--paper)}
+  .dm-node.person small{color:var(--dark-muted)}
+  .dm-node.coord{border-color:var(--accent);background:var(--accent-soft)}
+  .dm-node.coord b{color:var(--accent)}
+  .dm-node.event{border-style:dashed;background:transparent}
+  .dm-connector{width:1px;height:16px;background:var(--line)}
+  .dm-core{display:grid;grid-template-columns:1fr 24px 1.1fr 24px 1fr;align-items:center;width:100%;gap:8px}
+  .dm-arrow{text-align:center;color:var(--muted);font-size:18px}
+  .dm-fan{position:relative;height:24px;width:100%}
+  .dm-fan::before{content:"";position:absolute;top:0;left:16.1%;right:16.1%;height:1px;background:var(--line)}
+  .dm-fan span{position:absolute;top:0;width:1px;height:100%;background:var(--line)}
+  .dm-fan span:nth-child(1){left:16.1%}
+  .dm-fan span:nth-child(2){left:50%}
+  .dm-fan span:nth-child(3){left:83.9%}
+  .dm-workers{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;width:100%}
+  .dm-workers .dm-node{min-width:0;padding:12px 10px}
+
+  .eventgrid{display:grid;grid-template-columns:1fr 1.05fr;gap:40px;align-items:center}
+  .tviz{padding-top:4px}
+  .tv-track{display:flex;align-items:center;padding:18px 4px 34px}
+  .tv-dot{position:relative;flex:0 0 auto;width:14px;height:14px;border-radius:50%;background:var(--accent)}
+  .tv-dot i{position:absolute;top:22px;left:50%;transform:translateX(-50%);font:500 12px/1 var(--mono);font-style:normal;color:var(--muted);white-space:nowrap}
+  .tv-seg{flex:1;height:2px;background:var(--line)}
+  .routes{display:flex;flex-direction:column;gap:12px}
+  .route-row{display:grid;grid-template-columns:82px 1fr;gap:12px;align-items:center}
+  .route-label{font:600 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .route-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .route-chip{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:7px 11px;font-size:14.5px}
+
+  .ctxpanel{display:flex;flex-direction:column;gap:10px}
+  .ctx-window{border:1px solid var(--accent);background:var(--accent-soft);border-radius:14px;padding:16px 20px}
+  .ctx-store{border:1px dashed var(--line);background:rgba(255,253,248,.55);border-radius:14px;padding:14px 20px}
+  .ctx-tag{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .ctx-store .ctx-tag{color:var(--muted)}
+  .ctx-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .ctx-chips span{background:var(--white);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:14px}
+  .ctx-arrow{text-align:center;font-size:12px;color:var(--muted)}
+  .chain{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .chain-chip{background:var(--white);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:14px}
+  .chain-chip i{display:block;font-style:normal;font-size:11px;line-height:1.3;color:var(--muted);margin-top:2px}
+
+  .lanes{display:flex;flex-direction:column;gap:24px}
+  .lane + .lane{border-top:1px dashed var(--line);padding-top:22px}
+  .lane{display:grid;grid-template-columns:60px 1fr;gap:16px;align-items:center}
+  .lane-label{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .lane-track{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .lane-chip{background:var(--white);border:1px solid var(--line);border-radius:999px;padding:10px 15px;font-size:15.5px}
+  .lane-chip.back{background:transparent;border-style:dashed;color:var(--muted)}
+
+  .persist{display:grid;grid-template-columns:1fr 80px 1.05fr 80px 1fr;align-items:center}
+  .pnode{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:16px 18px;text-align:center}
+  .pnode .tag{font:600 11px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+  .pnode b{display:block;font-size:19px;margin:7px 0 3px}
+  .pnode small{font-size:12.5px;color:var(--muted)}
+  .pnode.hot{border-color:var(--accent);background:var(--accent-soft)}
+  .plink{text-align:center;color:var(--muted);font-size:20px}
+  .plink small{display:block;font-size:10.5px;line-height:1.3;margin-top:2px}
+  .pwatch{display:flex;align-items:center;gap:14px;border:1px dashed var(--line);border-radius:12px;padding:12px 18px;font-size:15px;line-height:1.45;color:var(--muted)}
+  .pwatch .badge{flex:0 0 auto}
+
+
+  /* ---------- part 2 map ---------- */
+  .whatmap .num{font-size:92px;margin-bottom:6px}
+  .whatmap h2{font-size:50px;margin-bottom:12px}
+  .whatmap .lede{font-size:21px;max-width:1040px}
+  .qmap{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px;width:100%}
+  .qcard{border:1px solid rgba(245,241,232,.16);background:rgba(255,255,255,.05);border-radius:14px;padding:18px 18px 16px}
+  .qcard .n{font:600 11px/1 var(--mono);letter-spacing:.14em;color:#d98a6f;text-transform:uppercase}
+  .qcard h3{font-size:20px;line-height:1.4;color:var(--paper);margin:10px 0 12px;font-weight:600}
+  .qcard .ans{font-size:14px;line-height:1.45;color:#e8b9a8}
+  .chainnote{margin-top:22px;font-size:14px;line-height:1.6;color:var(--dark-muted)}
+
+  /* ---------- events big ---------- */
+  .pipe{display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;background:rgba(255,253,248,.55)}
+  .pipe-node{flex:1;text-align:center;font-size:15px;font-weight:600;line-height:1.3}
+  .pipe-node small{display:block;font-weight:400;font-size:11px;color:var(--muted);margin-top:3px}
+  .pipe-arrow{color:var(--muted);font-size:14px;flex:0 0 auto}
+  .eventbig{display:grid;grid-template-columns:1.05fr 1fr;gap:40px;align-items:center}
+  .threadbig,.routebig{border:1px solid var(--line);border-radius:14px;padding:22px 26px;background:rgba(255,253,248,.5)}
+  .tb-head{font-size:20px;font-weight:600;margin-bottom:28px}
+  .tb-track{display:flex;align-items:center;padding:0 10px 58px}
+  .tb-dot{position:relative;width:22px;height:22px;border-radius:50%;background:var(--accent);flex:0 0 auto}
+  .tb-dot i{position:absolute;top:30px;left:50%;transform:translateX(-50%);font:600 13px/1 var(--mono);font-style:normal;color:var(--accent)}
+  .tb-dot b{position:absolute;top:50px;left:50%;transform:translateX(-50%);font-size:16px;font-weight:500;white-space:nowrap;color:var(--ink)}
+  .tb-seg{flex:1;height:3px;background:var(--line)}
+  .routebig{display:flex;flex-direction:column;gap:14px}
+  .routebig-row{display:grid;grid-template-columns:84px 1fr;gap:12px;align-items:center}
+  .routebig-label{font:600 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .rb-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .rb-node{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:13px 18px;font-size:17px}
+  .rb-node.accent{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+  .rb-arrow{color:var(--muted);font-size:16px}
+
+  /* ---------- context big ---------- */
+  .ctxbig{display:grid;grid-template-columns:1fr 100px 1fr;gap:18px;align-items:stretch}
+  .ctxbig-panel{border-radius:14px;padding:22px 26px;border:1px solid var(--line);min-height:190px}
+  .ctxbig-panel.win{border-color:var(--accent);background:var(--accent-soft)}
+  .ctxbig-panel.store{border-style:dashed;background:rgba(255,253,248,.55)}
+  .ctxbig-panel .ctx-tag{font-size:12px}
+  .ctx-sub{font-size:15px;color:var(--muted);margin:9px 0 14px}
+  .ctx-chips.big span{font-size:16px;padding:7px 14px}
+  .ctxbig-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--muted);font-size:22px}
+  .ctxbig-mid small{font-size:11px;line-height:1.35;text-align:center;margin-top:6px}
+  .ctx-foot{margin-top:18px;font-size:13px;color:var(--muted)}
+  .chainline{border-top:1px solid var(--line);padding-top:18px}
+  .chainline > .ctx-tag{display:block;margin-bottom:12px}
+  .chain.big{width:100%}
+  .chain.big .chain-chip{flex:1;text-align:center;padding:14px 12px;font-size:17px}
+  .chain.big .to{flex:0 0 auto;font-size:18px}
+
+
+  .arch .node{min-width:260px;padding:16px 26px}
+  .arch .node.main{min-width:420px}
+  .arch .workers{width:760px}
+  .arch .workers .node{padding:14px 18px}
+  .lanes.panel{border:1px solid var(--line);border-radius:14px;padding:20px 24px;background:rgba(255,253,248,.5);gap:18px}
+  .lanes-head{font-size:16px;font-weight:600;color:var(--ink);margin-bottom:0}
+  .lane-chip{font-size:16.5px;padding:11px 16px}
+  .defwords{margin-top:14px}
+  .defwords b{color:var(--accent);font-weight:600;margin:0 2px}
+  /* ---------- hud ---------- */
+  #hud{
+    position:absolute;left:46px;right:46px;bottom:20px;
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    z-index:40;pointer-events:none;
+    opacity:0;transform:translateY(6px);
+    transition:opacity .25s ease,transform .25s ease;
+  }
+  body.hud #hud{opacity:1;transform:none}
+  #hud .left{pointer-events:none}
+  #hud .right{display:flex;align-items:center;gap:8px;pointer-events:auto}
+  .chip{
+    font:500 12px/1 var(--mono);letter-spacing:.08em;
+    color:var(--muted);
+    background:rgba(245,241,232,.78);
+    border:1px solid rgba(0,0,0,.09);
+    border-radius:999px;padding:7px 11px;
+    backdrop-filter:blur(6px);
+  }
+  #timer{pointer-events:auto;cursor:pointer;min-width:58px;text-align:center}
+  #timer.paused{color:var(--accent)}
+  #hud button{
+    font:500 13px/1 var(--sans);
+    color:var(--ink);
+    background:rgba(245,241,232,.8);
+    border:1px solid rgba(0,0,0,.1);
+    border-radius:8px;padding:8px 10px;cursor:pointer;
+    backdrop-filter:blur(6px);
+  }
+  #hud button:hover{background:#fff}
+  #hud .icon{font-size:15px;padding:7px 10px}
+
+  /* ---------- overlays ---------- */
+  #notes{
+    position:absolute;left:0;right:0;bottom:0;z-index:30;
+    max-height:300px;overflow:auto;
+    background:var(--white);
+    border-top:1px solid var(--line);
+    padding:22px 88px 26px;
+    box-shadow:0 -12px 40px rgba(0,0,0,.08);
+  }
+  #notes .notes-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  #notes .notes-h b{font:600 12px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+  #notes .notes-h span{font-size:12px;color:var(--muted)}
+  #notes p{font-size:18px;line-height:1.6;color:var(--ink)}
+
+  #overview{
+    position:absolute;inset:0;z-index:60;
+    background:rgba(245,241,232,.985);
+    padding:46px 56px;overflow:auto;
+  }
+  #overview h3{font-size:24px;margin-bottom:22px}
+  #overview-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .ov-card{
+    display:flex;flex-direction:column;gap:5px;text-align:left;
+    background:var(--white);border:1px solid var(--line);border-radius:10px;
+    padding:13px 14px;cursor:pointer;font-family:inherit;
+  }
+  .ov-card:hover{border-color:var(--accent)}
+  .ov-num{font:600 11px/1 var(--mono);color:var(--accent);letter-spacing:.08em}
+  .ov-title{font-size:15px;line-height:1.35;color:var(--ink)}
+  .ov-sec{font:500 10px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  #help{position:absolute;inset:0;z-index:65;background:rgba(18,16,14,.55);display:flex;align-items:center;justify-content:center}
+  .help-card{background:var(--paper);border-radius:16px;padding:34px 38px;width:660px;box-shadow:0 30px 80px rgba(0,0,0,.35)}
+  .help-card h3{font-size:24px;margin-bottom:6px}
+  .help-card p{font-size:15px;color:var(--muted);margin-bottom:18px}
+  .help-card table{width:100%;border-collapse:collapse;font-size:16px}
+  .help-card td{padding:8px 0;border-bottom:1px solid var(--line)}
+  .help-card td:first-child{width:180px;font:600 13px/1.4 var(--mono);color:var(--accent)}
+  .help-card tr:last-child td{border-bottom:0}
+
+  [hidden]{display:none !important}
+
+  /* ---------- motion ---------- */
+  @media (prefers-reduced-motion: no-preference){
+    .slide.active .s-head{animation:rise .42s cubic-bezier(.2,.7,.2,1) both}
+    .slide.active .s-body{animation:rise .42s .06s cubic-bezier(.2,.7,.2,1) both}
+  }
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* ---------- print ---------- */
+  @media print{
+    @page{size:1600px 900px;margin:0}
+    html,body{width:1600px;height:auto;overflow:visible;background:#fff}
+    #stage{position:static;transform:none !important;width:1600px;height:auto;box-shadow:none;overflow:visible}
+    .slide{
+      position:relative;display:block !important;
+      opacity:1 !important;visibility:visible !important;pointer-events:auto !important;
+      width:1600px;height:900px;
+      page-break-after:always;break-after:page;
+    }
+    .slide:last-child{page-break-after:auto;break-after:auto}
+    #hud,#progress,#overview,#help,#notes{display:none !important}
+    .slide.active .s-head,.slide.active .s-body{animation:none !important}
+  }
+
+  /* ---------- narrow screens (fallback; presentation is 16:9) ---------- */
+  @media (max-width:700px){
+    #hud{left:14px;right:14px;bottom:10px}
+    #hud .right .chip{display:none}
+  }
+</style>
+</head>
+<body>
+<div id="progress"></div>
+<main id="stage" aria-live="polite">
+
+  <!-- 01 cover -->
+  <section class="slide cover dark active" data-section="开场" data-title="封面：Super-agent 内部分享">
+    <div class="s-head">
+      <p class="kicker">内部分享 · 工程团队 · 2026.11</p>
+      <h1>Super-agent<br><span class="dim">面向工程团队的高效交付</span></h1>
+      <p class="lede">从「人盯 Session」到「人做验收」——一条 GitHub issue 的一生</p>
+      <div class="cover-meta">
+        <span>45–60 min</span>
+        <span>基于 DSH 团队文章与 dsh-superagent 原型</span>
+      </div>
+      <p class="hint"><kbd>←</kbd><kbd>→</kbd> 翻页 &nbsp;·&nbsp; <kbd>F</kbd> 全屏 &nbsp;·&nbsp; <kbd>O</kbd> 总览 &nbsp;·&nbsp; <kbd>N</kbd> 备注 &nbsp;·&nbsp; <kbd>T</kbd> 计时 &nbsp;·&nbsp; <kbd>P</kbd> 打印 / PDF</p>
+    </div>
+    <aside class="notes">
+      <p>开场只用一句话：今天不聊模型能力，聊「一个人怎么带一个团队规模的 Agent」。全程用一条 issue 贯穿，最后给一个两周能做的试点建议。</p>
+    </aside>
+  </section>
+
+  <!-- 02 three questions -->
+  <section class="slide" data-section="导览" data-title="今天只回答三个问题">
+    <div class="s-head">
+      <p class="kicker">导览</p>
+      <h2>今天只回答三个问题</h2>
+    </div>
+    <div class="s-body">
+      <div class="cards three">
+        <div class="card">
+          <span class="idx">WHY</span>
+          <h3>为什么单任务很强，<br>团队吞吐还是上不去？</h3>
+          <p>瓶颈从模型能力，转移到了人的注意力。</p>
+        </div>
+        <div class="card">
+          <span class="idx">WHAT</span>
+          <h3>Super-agent 靠哪几条机制同时推进多任务？</h3>
+          <p>四段因果链，不是一张功能清单。</p>
+        </div>
+        <div class="card">
+          <span class="idx">HOW</span>
+          <h3>工程团队怎么低成本试起来，<br>怎么判断有效？</h3>
+          <p>一条低风险流程、六个度量、两周验证。</p>
+        </div>
+      </div>
+      <div class="callout"><span class="tag">主线</span><span>一条 GitHub issue，从被评论到被合入：第一部分用它讲痛点，第二部分用它讲机制，第三部分用它做 demo。</span></div>
+    </div>
+    <aside class="notes">
+      <p>先框住预期：Why、What、How 三个问题；主线是一条 issue 从被评论到被合入。今天不讲模型训练、prompt 技巧和工具评测。</p>
+    </aside>
+  </section>
+
+  <!-- 03 divider why -->
+  <section class="slide divider dark" data-section="Why" data-title="第一部分：为什么">
+    <div class="num">01</div>
+    <h2>瓶颈不在模型，<br>在人的注意力。</h2>
+    <p class="lede">单任务上限取决于模型能力；多任务上限取决于人能同时关注多少。</p>
+    <aside class="notes">
+      <p>这一部分 10 分钟。核心论点：单任务上限是模型，多任务上限是人的注意力。先把「为什么需要新架构」讲透，再进机制。</p>
+    </aside>
+  </section>
+
+  <!-- 04 pain -->
+  <section class="slide" data-section="Why · 痛点" data-title="并行度上去了，人却成了调度器">
+    <div class="s-head">
+      <p class="kicker">Why · 痛点</p>
+      <h2>并行度上去了，人却成了调度器</h2>
+    </div>
+    <div class="s-body">
+      <div class="split">
+        <div class="symptoms">
+          <div class="symptom"><b>上下文混乱</b><span>多个会话各说各话，人要在脑子里做合并。</span></div>
+          <div class="symptom"><b>同步阻塞</b><span>一个会话跑长任务，人只能等，或者切走再切回。</span></div>
+          <div class="symptom"><b>会话割裂</b><span>任务之间不共享上下文，重复交代背景成为常态。</span></div>
+        </div>
+        <div class="stat">
+          <div class="big">3–5<small> 个</small></div>
+          <p class="cap">个人能同时有效关注的 Session 数。这是经验观察，不是测量数据。</p>
+          <div class="quote">「单任务上限取决于模型能力，<br>多任务上限取决于人的注意力。」<small>—— DSH 团队文章</small></div>
+        </div>
+      </div>
+      <p class="small">现场可以做个小调查：你现在同时开着几个 Session？其中几个是真的在推进？</p>
+    </div>
+    <aside class="notes">
+      <p>先问现场「你现在同时开着几个 Session」，再给 3–5 这个经验值，强调是观察不是数据。三个症状各举一个身边的例子，最后念原文那句话。</p>
+    </aside>
+  </section>
+
+  <!-- 05 two axes -->
+  <section class="slide" data-section="Why · 演进" data-title="不是替代关系，是两条演进轴">
+    <div class="s-head">
+      <p class="kicker">Why · 演进</p>
+      <h2>不是替代关系，是两条演进轴</h2>
+    </div>
+    <div class="s-body">
+      <div class="axes">
+        <div class="axis">
+          <div class="axis-h"><b>任务内能力</b><span>目标：把一次任务做深、做稳</span></div>
+          <div class="steps">
+            <span class="pill">ReAct</span><span class="to">→</span>
+            <span class="pill">工具调用 / 多 Agent 交接</span><span class="to">→</span>
+            <span class="pill">Skills</span>
+          </div>
+        </div>
+        <div class="axis">
+          <div class="axis-h"><b>任务间组织</b><span>目标：让一组任务长期并行</span></div>
+          <div class="steps">
+            <span class="pill">人肉调度</span><span class="to">→</span>
+            <span class="pill">Personal Agent</span><span class="to">→</span>
+            <span class="pill hot">Super-agent</span>
+          </div>
+        </div>
+      </div>
+      <div class="callout"><span class="tag">结论</span><span>多 Agent ≠ Super-agent。前者优化任务内部，后者组织任务之间；Personal Agent 与 Super-agent 也不是替代关系。</span></div>
+    </div>
+    <aside class="notes">
+      <p>任务内能力解决「一次任务做深」，任务间组织解决「一组任务并行」。Claude Code 那类讨论前者，DSH 讨论后者；避免听成一代取代一代。多 Agent ≠ Super-agent。</p>
+    </aside>
+  </section>
+
+  <!-- 06 why now -->
+  <section class="slide" data-section="Why · 时机" data-title="为什么是现在">
+    <div class="s-head">
+      <p class="kicker">Why · 时机</p>
+      <h2>四个变化，让它从论文变成可跑</h2>
+    </div>
+    <div class="s-body">
+      <div class="cards four">
+        <div class="card"><span class="idx">01</span><h3>长上下文可用</h3><p>跨文件、跨会话携带上下文从演示变成日常。</p></div>
+        <div class="card"><span class="idx">02</span><h3>工具与代码执行成熟</h3><p>读写文件、跑测试、开 PR，闭环能真正走完。</p></div>
+        <div class="card"><span class="idx">03</span><h3>推理成本下降</h3><p>后台多跑几路、投机执行，经济上开始成立。</p></div>
+        <div class="card"><span class="idx">04</span><h3>异步运行时与沙箱</h3><p>非阻塞会话、隔离执行环境，是并行的基础设施。</p></div>
+      </div>
+      <div class="callout"><span class="tag">判断</span><span>缺任何一项，Super-agent 都只能停留在演示；四项同时成熟，才值得在团队里试。</span></div>
+    </div>
+    <aside class="notes">
+      <p>四项变化缺一不可，重点讲异步运行时与沙箱，这两项常被忽略。没有它们，Super-agent 只能停留在演示。</p>
+    </aside>
+  </section>
+
+  <!-- 07 what -->
+  <section class="slide" data-section="Why · 定义" data-title="什么是 Super-agent？">
+    <div class="s-head">
+      <p class="kicker">Why · 定义</p>
+      <h2>什么是 Super-agent？</h2>
+      <p class="lede">一个能跨会话保持上下文、同时推进多项任务、<br>被环境事件唤醒、并且能长期在线的 Agent 系统。</p>
+      <p class="small defwords">四个特点：<b>连续</b> · <b>高效</b> · <b>主动</b> · <b>持久</b></p>
+    </div>
+    <div class="s-body">
+      <div class="split wide-left">
+        <div class="defmap">
+          <div class="dm-row">
+            <div class="dm-node person"><b>人</b><small>定目标 · 验收</small></div>
+          </div>
+          <div class="dm-connector"></div>
+          <div class="dm-core">
+            <div class="dm-node event"><b>事件</b><small>评论 / CI / 群消息</small></div>
+            <div class="dm-arrow">→</div>
+            <div class="dm-node coord"><b>协调者</b><small>常驻 · 记得全局</small></div>
+            <div class="dm-arrow">↔</div>
+            <div class="dm-node store"><b>状态 / 记忆</b><small>上下文 · 任务 · 订阅</small></div>
+          </div>
+          <div class="dm-fan"><span></span><span></span><span></span></div>
+          <div class="dm-workers">
+            <div class="dm-node"><b>执行 A</b><small>独立上下文 / 目录</small></div>
+            <div class="dm-node"><b>执行 B</b><small>独立上下文 / 目录</small></div>
+            <div class="dm-node"><b>执行 C</b><small>独立上下文 / 目录</small></div>
+          </div>
+        </div>
+        <ul class="pts">
+          <li>你面对的是一个团队，不是一串 Session。</li>
+          <li>每件事独立执行，全局记忆在协调者手里。</li>
+          <li>它被事件叫醒，也能被拉回正轨。</li>
+        </ul>
+      </div>
+      <p class="small">先建立直觉；这些角色的正式名字——Router、Worker、Thread、Watchdog——在第二部分展开。</p>
+    </div>
+    <aside class="notes">
+      <p>先用这张图建立直觉，不要在这一页抛 Router、Worker、Thread 这些词；点明「人只定目标和验收」。告诉听众正式名字从第二部分开始给。</p>
+    </aside>
+  </section>
+
+  <!-- 08 overview what -->
+  <section class="slide divider dark whatmap" data-section="What" data-title="第二部分：四段机制，四个问题">
+    <div class="num">02</div>
+    <h2>四段机制，四个问题</h2>
+    <p class="lede">每一段解决前一段留下的问题；顺序不能换。</p>
+    <div class="qmap">
+      <div class="qcard">
+        <span class="n">01 分层</span>
+        <h3>同时跑多个任务，<br>怎么不互相拖垮？</h3>
+        <p class="ans">Router / Worker · 上下文隔离</p>
+      </div>
+      <div class="qcard">
+        <span class="n">02 事件</span>
+        <h3>任务从哪来，<br>上下文怎么接上？</h3>
+        <p class="ans">Trigger / Thread · 订阅</p>
+      </div>
+      <div class="qcard">
+        <span class="n">03 交互</span>
+        <h3>人怎么在过程中<br>插话，而不被阻塞？</h3>
+        <p class="ans">异步 ReAct · 全双工</p>
+      </div>
+      <div class="qcard">
+        <span class="n">04 持久</span>
+        <h3>机器挂了、跑偏了，<br>怎么办？</h3>
+        <p class="ans">计算 / 状态 / 环境 + Watchdog</p>
+      </div>
+    </div>
+    <p class="chainnote">没有隔离，事件一多就互相拖垮；没有上下文，事件接不上；没有交互，人还是得等；没有持久，前面都白搭。</p>
+    <aside class="notes">
+      <p>这是第二部分的路线图。按顺序问四个问题：同时跑多个任务怎么不互相拖垮（分层）；任务从哪来、上下文怎么接（事件与 Thread）；人怎么插话（异步）；挂了怎么办（分离 + Watchdog）。四段是依赖关系，不是四个并列功能。每讲完一段，回到同一条 issue。</p>
+    </aside>
+  </section>
+
+  <!-- 09 dual layer -->
+  <section class="slide" data-section="What · 分层" data-title="Router 负责协调，Worker 负责执行">
+    <div class="s-head">
+      <p class="kicker">What · 分层隔离</p>
+      <h2>Router 负责协调，Worker 负责执行</h2>
+    </div>
+    <div class="s-body">
+      <div class="arch">
+        <div class="node main"><b>Router</b><small>常驻 · 轻量模型 · 与人交互 · 冷启动与跨任务协调</small></div>
+        <div class="fan">↓</div>
+        <div class="workers">
+          <div class="node"><b>Worker</b><small>强模型 · 独立上下文</small></div>
+          <div class="node"><b>Worker</b><small>独立目录 · 可 fork subagent</small></div>
+          <div class="node"><b>Worker</b><small>彼此不通信 · 各自推进</small></div>
+        </div>
+      </div>
+      <div class="callout"><span class="tag">关键</span><span>过滤后的消息直接投给已订阅的 Worker，不经过 Router——这才是 Router 敢用轻量模型、吞吐还能起来的原因。</span></div>
+      <p class="small">代价：Worker 之间不共享上下文，靠 Thread、订阅与链式召回补；跨任务取舍仍是 Router 的责任。</p>
+    </div>
+    <aside class="notes">
+      <p>先纠正「所有消息都过 Router」的误解：Router 只做冷启动与跨任务协调，过滤后的消息直接投 Worker。代价是 Worker 之间不共享上下文，靠 Thread 与链式召回补。</p>
+    </aside>
+  </section>
+
+  <!-- 10 triggers -->
+  <section class="slide" data-section="What · 事件" data-title="从「推一下动一下」到「环境触发」">
+    <div class="s-head">
+      <p class="kicker">What · 事件驱动</p>
+      <h2>从「推一下动一下」到「环境触发」</h2>
+    </div>
+    <div class="s-body">
+      <div class="pipe">
+        <span class="pipe-node">Trigger<small>评论 / CI / 群消息</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">程序过滤<small>Fast Path</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">语义判断<small>Slow Path</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">归入 Thread<small>一串事件</small></span>
+        <span class="pipe-arrow">→</span>
+        <span class="pipe-node">路由<small>新 / 已订阅</small></span>
+      </div>
+      <div class="eventbig">
+        <div class="threadbig">
+          <div class="tb-head">Thread：一串 Trigger 是一条线</div>
+          <div class="tb-track">
+            <span class="tb-dot"><i>T1</i><b>评论</b></span>
+            <span class="tb-seg"></span>
+            <span class="tb-dot"><i>T2</i><b>CI 失败</b></span>
+            <span class="tb-seg"></span>
+            <span class="tb-dot"><i>T3</i><b>review</b></span>
+          </div>
+          <p class="small">同一条线共享上下文；一个 Worker 可以同时订阅多条线。</p>
+        </div>
+        <div class="routebig">
+          <div class="routebig-row">
+            <span class="routebig-label">新任务</span>
+            <span class="rb-line"><span class="rb-node accent">Router 冷启动</span><span class="rb-arrow">→</span><span class="rb-node">建 Worker + 订阅</span></span>
+          </div>
+          <div class="routebig-row">
+            <span class="routebig-label">已订阅</span>
+            <span class="rb-line"><span class="rb-node">程序直投</span><span class="rb-arrow">→</span><span class="rb-node">Worker</span></span>
+          </div>
+          <p class="small">只有新任务经过 Router；日常消息直接到执行者。</p>
+        </div>
+      </div>
+      <p class="tiny">「Fast / Slow」在原文里有两套含义：过滤的两层、路由的两条；讲的时候分开说。</p>
+    </div>
+    <aside class="notes">
+      <p>先讲两层过滤：程序先筛、语义再判；再讲 Thread 是一条线、订阅决定后续消息去哪。两条路由分开讲：新 Thread 走 Router，已订阅直接投。最后提醒 Fast/Slow 有两套含义，别混。</p>
+    </aside>
+  </section>
+
+  <!-- 11 context -->
+  <section class="slide" data-section="What · 上下文" data-title="窗口就那么大：Inline、Spill 与链式召回">
+    <div class="s-head">
+      <p class="kicker">What · 上下文</p>
+      <h2>窗口就那么大：Inline、Spill 与链式召回</h2>
+    </div>
+    <div class="s-body">
+      <div class="ctxbig">
+        <div class="ctxbig-panel win">
+          <span class="ctx-tag">上下文窗口 · Inline</span>
+          <p class="ctx-sub">手边常用的，直接放进来</p>
+          <div class="ctx-chips big"><span>当前任务</span><span>最近消息</span><span>引用 / 摘要</span></div>
+          <p class="ctx-foot">窗口预算有限，越常用越靠前。</p>
+        </div>
+        <div class="ctxbig-mid">⇄<small>按需读回 / 放回</small></div>
+        <div class="ctxbig-panel store">
+          <span class="ctx-tag">Spill · 档案柜</span>
+          <p class="ctx-sub">低频、完整的信息，留引用</p>
+          <div class="ctx-chips big"><span>完整日志</span><span>历史文档</span><span>旧结果</span></div>
+          <p class="ctx-foot">只留引用，读回时才占窗口。</p>
+        </div>
+      </div>
+      <div class="chainline">
+        <span class="ctx-tag">Chain of Recall</span>
+        <div class="chain big">
+          <span class="chain-chip">群消息<i>「昨天那个问题…」</i></span>
+          <span class="to">→</span>
+          <span class="chain-chip">Thread</span>
+          <span class="to">→</span>
+          <span class="chain-chip">Worker</span>
+          <span class="to">→</span>
+          <span class="chain-chip">PR</span>
+          <span class="to">→</span>
+          <span class="chain-chip">修改记录</span>
+        </div>
+        <p class="small" style="margin-top:12px">每个对象带下一跳的 ID：不靠大记忆库，靠一张可实时渲染的引用图。</p>
+      </div>
+      <div class="split even" style="gap:24px">
+        <div class="callout"><span class="tag">差别</span><span>和 OS 不同：内核自动处理缺页；LLM 得自己意识到缺什么，再去读。</span></div>
+        <div class="callout alt"><span class="tag">投机</span><span>后台按环境信号先试；有价值就交付，没价值就丢弃，代价是算力。</span></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>用工作台与档案柜比喻 Inline/Spill；强调和 OS 换页的差别——LLM 得自己知道缺什么。链式召回用「群里问一句」的例子；投机执行讲清「没价值就丢弃」。</p>
+    </aside>
+  </section>
+
+  <!-- 12 async -->
+  <section class="slide" data-section="What · 交互" data-title="异步 ReAct：人不必等 Agent">
+    <div class="s-head">
+      <p class="kicker">What · 多信道交互</p>
+      <h2>异步 ReAct：人不必等 Agent</h2>
+    </div>
+    <div class="s-body">
+      <p class="small" style="font-family:var(--mono);color:var(--ink)">run()：阻塞到结果返回　→　start()：立即返回，继续 loop</p>
+      <div class="lanes panel">
+        <div class="lanes-head">同一会话，两条时间线</div>
+        <div class="lane">
+          <span class="lane-label">前台</span>
+          <div class="lane-track">
+            <span class="lane-chip">人：修一下这个</span><span class="to">→</span>
+            <span class="lane-chip">Agent：收到，在做</span><span class="to">→</span>
+            <span class="lane-chip">人：顺便看下另一个</span><span class="to">→</span>
+            <span class="lane-chip">Agent：好</span>
+          </div>
+        </div>
+        <div class="lane">
+          <span class="lane-label">后台</span>
+          <div class="lane-track">
+            <span class="lane-chip back">读代码</span><span class="to">→</span>
+            <span class="lane-chip back">改</span><span class="to">→</span>
+            <span class="lane-chip back">跑测试</span><span class="to">→</span>
+            <span class="lane-chip back">提 PR</span>
+          </div>
+        </div>
+        <div class="lane">
+          <span class="lane-label">回传</span>
+          <div class="lane-track">
+            <span class="lane-chip back">任务完成</span><span class="to">→</span>
+            <span class="lane-chip back">通知前台</span><span class="to">→</span>
+            <span class="lane-chip back">人查看</span>
+          </div>
+        </div>
+      </div>
+      <div class="split even" style="gap:24px">
+        <div class="callout alt"><span class="tag">代价</span><span>乱序、取消、部分结果、状态一致性，都要额外设计。</span></div>
+        <div class="callout"><span class="tag">现状</span><span>DSH 已实现、未默认开启：它是运行时能力，不是模型能力。</span></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>run() 阻塞 vs start() 立即返回；两条时间线说明前台对话不被后台任务挡住。代价是乱序、取消、部分结果；现状是 DSH 已实现、未默认开启，说明它是运行时能力，不是模型能力。</p>
+    </aside>
+  </section>
+
+  <!-- 13 persistence -->
+  <section class="slide" data-section="What · 持久" data-title="计算、状态、环境分开；再加一只 Watchdog">
+    <div class="s-head">
+      <p class="kicker">What · 持久与自愈</p>
+      <h2>计算、状态、环境分开；再加一只 Watchdog</h2>
+    </div>
+    <div class="s-body">
+      <div class="persist">
+        <div class="pnode"><span class="tag">环境</span><b>本地 daemon</b><small>BYOM · 代码 / 工具链</small></div>
+        <div class="plink"><span>⇄</span><small>命令 / 结果</small></div>
+        <div class="pnode hot"><span class="tag">计算</span><b>云端容器</b><small>Agent Loop · 可替换</small></div>
+        <div class="plink"><span>⇄</span><small>读写状态</small></div>
+        <div class="pnode"><span class="tag">状态</span><b>数据库</b><small>会话 / 任务 / 订阅</small></div>
+      </div>
+      <div class="pwatch"><span class="badge rule">Watchdog</span><span>独立 Session、定时消息驱动；看的不只是进程存活，更是 LLM 循环死锁或偏离目标。它自己也烧 token。</span></div>
+      <div class="split even" style="gap:24px">
+        <ul class="pts compact">
+          <li>容器挂了换一个，状态还在就能继续；本地环境不动。</li>
+          <li>环境不搬上云：未提交改动、私有凭据、特定硬件，搬上去结果会变。</li>
+        </ul>
+        <div class="callout alt"><span class="tag">前提</span><span>云端与端侧互信；云端一旦被攻破，连着的所有设备都危险。</span></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>环境、计算、状态三者分开：容器挂了换一个、状态还在；本地环境不搬上云的原因要讲透。强调云端与端侧互信是前提。Watchdog 看的是 LLM 死锁或偏离目标，不只是进程存活，而且自己也烧 token。</p>
+    </aside>
+  </section>
+
+  <!-- 14 issue life -->
+  <section class="slide" data-section="What · 串起来" data-title="把机制串起来：一条 issue 的一生">
+    <div class="s-head">
+      <p class="kicker">What · 串起来</p>
+      <h2>把机制串起来：一条 issue 的一生</h2>
+    </div>
+    <div class="s-body">
+      <div class="flow journey">
+        <div class="step"><b>评论 / 事件</b><small>人提出请求</small><span class="badge">人</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><b>过滤 + 评估</b><small>按策略决定是否接受</small><span class="badge rule">规则授权</span></div>
+        <div class="arrow">→</div>
+        <div class="step"><b>Thread + 订阅</b><small>后续消息自动送达</small></div>
+        <div class="arrow">→</div>
+        <div class="step"><b>Worker 执行</b><small>独立会话 / 目录</small></div>
+        <div class="arrow">→</div>
+        <div class="step"><b>提 PR</b><small>结果回写原线程</small></div>
+        <div class="arrow">→</div>
+        <div class="step"><b>review + 合入</b><small>人工闸门</small><span class="badge">人</span></div>
+      </div>
+      <div class="split even" style="gap:32px">
+        <div class="callout"><span class="tag">看人</span><span>人只出现在两头：请求、验收；中间靠授权范围与规则。</span></div>
+        <div class="callout alt"><span class="tag">兜底</span><span>Watchdog 定时检查死锁 / 偏离目标；订阅让后续讨论不用再 @ 一次。</span></div>
+      </div>
+      <p class="small">这条链路就是第三部分的 demo 脚本；demo 里会刻意展示一次纠偏。</p>
+    </div>
+    <aside class="notes">
+      <p>把前面四段串成一条链路，指出人只出现在两头——请求与验收，中间靠授权范围与规则。这条链路就是第三部分的 demo 脚本。</p>
+    </aside>
+  </section>
+
+  <!-- 15 recap -->
+  <section class="slide" data-section="What · 回顾" data-title="回顾：四个特点，四条机制">
+    <div class="s-head">
+      <p class="kicker">What · 回顾</p>
+      <h2>四个特点，四条机制</h2>
+    </div>
+    <div class="s-body">
+      <div class="defs">
+        <div class="def"><b>连续</b><span class="to">→</span><span class="mech">Thread / 订阅 / Inline·Spill</span><small>来龙去脉、自动送达、手边与档案柜</small></div>
+        <div class="def"><b>高效</b><span class="to">→</span><span class="mech">Router / Worker 分层 + 过滤后直投</span><small>协调者与执行者，日常消息不惊动 Router</small></div>
+        <div class="def"><b>主动</b><span class="to">→</span><span class="mech">Trigger 事件驱动</span><small>评论、CI、群消息都能唤醒</small></div>
+        <div class="def"><b>持久</b><span class="to">→</span><span class="mech">计算 / 状态 / 环境分离 + Watchdog</span><small>换容器、换机器也能继续</small></div>
+      </div>
+      <div class="callout"><span class="tag">小结</span><span>四个特点不是四个功能，而是四组互相依赖的机制；缺一块，其他几块都会退化。</span></div>
+    </div>
+    <aside class="notes">
+      <p>四个特点现在都有机制对应：连续靠 Thread 与上下文，高效靠分层与直投，主动靠 Trigger，持久靠三者分离与 Watchdog。强调不是四个功能，而是四组互相依赖的机制；缺一块，其他几块会退化。</p>
+    </aside>
+  </section>
+
+  <!-- 16 divider how -->
+  <section class="slide divider dark" data-section="How" data-title="第三部分：怎么落地">
+    <div class="num">03</div>
+    <h2>怎么落到我们团队？</h2>
+    <p class="lede">先选一条低风险、高频的流程，用两周证明它值得扩大。</p>
+    <aside class="notes">
+      <p>这一部分 15 分钟，含 demo。先选一条低风险、高频的流程，用两周证明它值得扩大；部署细节不铺开讲。</p>
+    </aside>
+  </section>
+
+  <!-- 17 roles -->
+  <section class="slide" data-section="How · 角色" data-title="人做决策与验收，不是点一下「通过」">
+    <div class="s-head">
+      <p class="kicker">How · 角色</p>
+      <h2>人做决策与验收，不是点一下「通过」</h2>
+    </div>
+    <div class="s-body">
+      <div class="split even">
+        <div class="card">
+          <span class="idx">人保留</span>
+          <ul>
+            <li>目标与优先级：做什么、不做什么</li>
+            <li>取舍：范围、方案、发布节奏</li>
+            <li>评审：代码质量与风险是否可接受</li>
+            <li>对外沟通与责任归属</li>
+          </ul>
+        </div>
+        <div class="card">
+          <span class="idx">Agent 承担</span>
+          <ul>
+            <li>分诊、复现、定位</li>
+            <li>改代码、补测试、跑 CI</li>
+            <li>提 PR、回写讨论、跟进评论</li>
+            <li>把「需要人」的事项整理出来</li>
+          </ul>
+        </div>
+      </div>
+      <div class="callout"><span class="tag">约束</span><span>review 容量决定自动化上限。review 变成新瓶颈，就是失败——不是成功。</span></div>
+    </div>
+    <aside class="notes">
+      <p>人保留判断与责任，Agent 承担执行与整理。review 容量决定自动化上限；review 变成新瓶颈，就是失败，不是成功。</p>
+    </aside>
+  </section>
+
+  <!-- 18 authorization -->
+  <section class="slide" data-section="How · 授权" data-title="把「少打扰」做成制度">
+    <div class="s-head">
+      <p class="kicker">How · 授权</p>
+      <h2>把「少打扰」做成制度</h2>
+    </div>
+    <div class="s-body">
+      <div class="cards two">
+        <div class="card"><span class="idx">01 谁能触发</span><h3>名单 + 规则</h3><p>只有允许的人、允许的来源、允许的规则能发起工作；机器人消息不授权。</p></div>
+        <div class="card"><span class="idx">02 什么必须批</span><h3>人工闸门</h3><p>合入、发版、对外沟通、权限变更必须人批；分诊、复现、改代码提 PR 可自动。</p></div>
+        <div class="card"><span class="idx">03 通知预算</span><h3>少而准</h3><p>每天几条、怎么聚合、静默时段；只在需要人行动或结果可用时开口。</p></div>
+        <div class="card"><span class="idx">04 审计</span><h3>可回溯</h3><p>触发 → 授权 → 派工 → 结果，每一步留痕；出了问题能定位到哪一环。</p></div>
+      </div>
+      <p class="small">原型对应：评估（Eval）决定接不接受，授权（Mandate）限定范围，订阅（Subscription）决定后续消息送给谁。</p>
+    </div>
+    <aside class="notes">
+      <p>把「少打扰」做成制度：谁能触发、什么必须批、通知预算、审计。原型对应评估 Eval、授权 Mandate、订阅 Subscription——制度是「少打扰」的基础，不是靠模型自觉。</p>
+    </aside>
+  </section>
+
+  <!-- 19 pilot -->
+  <section class="slide" data-section="How · 试点" data-title="按价值/风险排序，不按技术栈">
+    <div class="s-head">
+      <p class="kicker">How · 试点路径</p>
+      <h2>按价值 / 风险排序，不按技术栈</h2>
+    </div>
+    <div class="s-body">
+      <div class="cards three">
+        <div class="card">
+          <span class="idx">第一步 · 低风险高频</span>
+          <h3>CI 失败分诊、issue 分诊去重</h3>
+          <p>前置：日志与测试结果可读。<br>看：误报率、人工介入率。</p>
+        </div>
+        <div class="card">
+          <span class="idx">第二步 · 需人评审</span>
+          <h3>小 bug 修复、文档/测试补齐、PR 初评</h3>
+          <p>前置：分支保护、CI、CODEOWNERS。<br>看：一次通过率、返工轮次。</p>
+        </div>
+        <div class="card">
+          <span class="idx">第三步 · 多信道 / 持久</span>
+          <h3>IM + GitHub 订阅、<br>Watchdog、存算分离</h3>
+          <p>前置：信任边界、密钥隔离。<br>看：可用性、单任务成本。</p>
+        </div>
+      </div>
+      <div class="callout"><span class="tag">节奏</span><span>每一步：2 周试点 + 明确 owner + 回滚开关。没达到退出条件，就不进入下一步。</span></div>
+    </div>
+    <aside class="notes">
+      <p>按价值与风险排序，不按技术栈。每一步写清前置条件、度量与退出条件；节奏是两周试点 + 明确 owner + 回滚开关，没达到条件就不进下一步。</p>
+    </aside>
+  </section>
+
+  <!-- 20 metrics -->
+  <section class="slide" data-section="How · 度量" data-title="没有这 6 个数，「高效」只是感觉">
+    <div class="s-head">
+      <p class="kicker">How · 度量</p>
+      <h2>没有这 6 个数，「高效」只是感觉</h2>
+    </div>
+    <div class="s-body">
+      <table class="metrics">
+        <thead><tr><th>指标</th><th>含义</th><th>示例目标</th></tr></thead>
+        <tbody>
+          <tr><td><strong>触发误报率</strong></td><td>被接受但最终无需行动的比例</td><td>&lt; 20%</td></tr>
+          <tr><td><strong>人工介入 / 任务</strong></td><td>每个任务人出手的次数</td><td>从 5 降到 2</td></tr>
+          <tr><td><strong>PR 一次通过率</strong></td><td>无返工直接合入的比例</td><td>&gt; 50%</td></tr>
+          <tr><td><strong>review 返工轮次</strong></td><td>平均几轮才能合入</td><td>≤ 1.5 轮</td></tr>
+          <tr><td><strong>单任务成本</strong></td><td>token + 容器 + 工具调用</td><td>设预算上限</td></tr>
+          <tr><td><strong>首个可用结果时间</strong></td><td>从触发到 PR / 答复</td><td>按流程定</td></tr>
+        </tbody>
+      </table>
+      <p class="small">先测两周基线，再谈提升；没有基线就只做定性复盘，不要宣称「效率提升」。</p>
+    </div>
+    <aside class="notes">
+      <p>六个指标先测基线；没有基线就只做定性复盘，不要宣称效率提升。表里的目标值是示例，不是硬性指标。</p>
+    </aside>
+  </section>
+
+  <!-- 21 boundaries -->
+  <section class="slide" data-section="How · 边界" data-title="什么时候不该用，坏了怎么办">
+    <div class="s-head">
+      <p class="kicker">How · 边界</p>
+      <h2>什么时候不该用，坏了怎么办</h2>
+    </div>
+    <div class="s-body">
+      <div class="split wide-left">
+        <div>
+          <h3 style="margin-bottom:12px">先排除</h3>
+          <ul class="pts compact">
+            <li>短任务、强实时：开一个 Worker 的成本高于人直接做。</li>
+            <li>不可逆的高风险操作：没有回滚路径，就不该自动。</li>
+            <li>没有测试与 review 容量的团队：自动化只会放大返工。</li>
+            <li>没有明确 owner 的流程：出事没人负责。</li>
+          </ul>
+        </div>
+        <table class="fail">
+          <thead><tr><th>失败模式</th><th>护栏</th></tr></thead>
+          <tbody>
+            <tr><td>幻觉 / 自信错</td><td>测试 + 人工闸门</td></tr>
+            <tr><td>跑飞 / 死循环</td><td>Watchdog + 预算</td></tr>
+            <tr><td>权限过大</td><td>最小权限 + 沙箱</td></tr>
+            <tr><td>review 变瓶颈</td><td>限并发 + 分级</td></tr>
+            <tr><td>成本失控</td><td>单任务上限 + 熔断</td></tr>
+            <tr><td>通知轰炸</td><td>预算 + 聚合</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout alt"><span class="tag">声明</span><span>dsh-superagent 是研究原型，不是官方产品；部分设计尚未实现。把它当参考实现，而不是可直接投产的软件。</span></div>
+    </div>
+    <aside class="notes">
+      <p>主动说什么时候不该用，比只讲优点更能建立信任。失败模式与护栏一一对应；最后念出原型免责声明，避免听众误以为已经可以投产。</p>
+      <p><b>Demo（8 分钟）：</b>贴一条评论 → 分诊 → 开 PR（改代码 + 跑测试）→ 人 review（故意展示一次纠偏）→ 合入并回写原线程。三个人工介入点：请求、review、合入。提前录屏兜底，现场失败就放录像；不要为炫技跑复杂任务。</p>
+    </aside>
+  </section>
+
+  <!-- 22 glossary -->
+  <section class="slide" data-section="附录" data-title="术语表">
+    <div class="s-head">
+      <p class="kicker">附录</p>
+      <h2>术语表</h2>
+    </div>
+    <div class="s-body">
+      <div class="glossary">
+        <div class="term"><b>Trigger</b><span>环境里的一个不可变事件，如评论、CI 结果。</span></div>
+        <div class="term"><b>Thread</b><span>一串相关 Trigger 组成的上下文线，如一个 PR。</span></div>
+        <div class="term"><b>Ticket / 工单</b><span>一次被授权的工作单元，绑定执行者与渠道。</span></div>
+        <div class="term"><b>Router</b><span>常驻协调层，负责交互、冷启动与跨任务协调。</span></div>
+        <div class="term"><b>Worker</b><span>执行层，独立上下文与目录，可 fork 子 Agent。</span></div>
+        <div class="term"><b>Eval / 评估</b><span>判断一批 Trigger 是否要求新工作，接受或停止。</span></div>
+        <div class="term"><b>Mandate / 授权</b><span>接受工作时授予的范围与强度，不可随意扩大。</span></div>
+        <div class="term"><b>Subscription / 订阅</b><span>工单与线程的关系，决定后续消息送给谁。</span></div>
+        <div class="term"><b>Inline / Spill</b><span>常用信息内联、低频信息外置，只留引用。</span></div>
+        <div class="term"><b>Chain of Recall</b><span>沿对象 ID 引用图逐跳召回上下文。</span></div>
+        <div class="term"><b>Speculative Execution</b><span>后台提前尝试，按结果价值决定交付或丢弃。</span></div>
+        <div class="term"><b>BYOM</b><span>Bring Your Own Machine：本地机器作为执行环境接入。</span></div>
+        <div class="term"><b>Watchdog</b><span>独立看门狗 Session，定时介入纠偏与恢复。</span></div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>术语表给会后翻阅，不逐条念；口头上尽量用「触发、线程、工单」这些中文词。</p>
+    </aside>
+  </section>
+
+  <!-- 23 closing -->
+  <section class="slide closing dark" data-section="收尾" data-title="三个结论，一个行动">
+    <div class="s-head">
+      <p class="kicker">收尾</p>
+      <h2>三个结论，一个行动</h2>
+    </div>
+    <div class="s-body">
+      <ul class="pts">
+        <li><b>瓶颈是注意力，不是模型。</b>多任务的并行度，最终由人能验收多少决定。</li>
+        <li><b>机制是因果链，不是功能清单。</b>分层、事件、交互、持久，四段依次解决四个问题。</li>
+        <li><b>先用度量证明，再扩大。</b>两周基线，六个指标，达不到就停。</li>
+      </ul>
+      <div class="ask">
+        <span class="tag">下一步</span>
+        <p>选一条低风险、高频的流程，指定 owner，做两周试点；下次评审只看数据，不看演示。</p>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>三个结论各一句话；落到一个明确行动——一条流程、一个 owner、两周。下次评审只看数据，不看演示。</p>
+      <p><b>Q&amp;A 预判：</b>成本失控？代码/凭据出域？换模型还行吗？岗位影响？和现有 CI/PR 流程冲突？答不上来的记下来，会后补数据。</p>
+    </aside>
+  </section>
+
+  <!-- 24 refs -->
+  <section class="slide" data-section="附录" data-title="参考资料与时间分配">
+    <div class="s-head">
+      <p class="kicker">附录</p>
+      <h2>参考资料与时间分配</h2>
+    </div>
+    <div class="s-body">
+      <div class="split even">
+        <div class="refs">
+          <div class="ref"><span class="n">01</span><div>DSH 团队《Super-agent 设计探索：迈向更自主的 Agent 系统》</div></div>
+          <div class="ref"><span class="n">02</span><div>cxuan 解读<a class="u" href="https://mp.weixin.qq.com/s/vt2qgHGAmzpqY-CXBWAj0g" target="_blank" rel="noopener">https://mp.weixin.qq.com/s/vt2qgHGAmzpqY-CXBWAj0g</a></div></div>
+          <div class="ref"><span class="n">03</span><div>dsh-superagent 原型<a class="u" href="https://github.com/saltapp/dsh-superagent-prototype-cn" target="_blank" rel="noopener">https://github.com/saltapp/dsh-superagent-prototype-cn</a></div></div>
+          <div class="ref"><span class="n">04</span><div>原型文档：设计理念、领域模型、架构<span class="u">docs/000-philosophy-zh.md · 001-domain-zh.md · 007-architecture-zh.md</span></div></div>
+          <div class="ref"><span class="n">05</span><div>声明：原型为研究代码，非官方产品；部分设计尚未实现。</div></div>
+        </div>
+        <div>
+          <h3 style="margin-bottom:10px">60 分钟版本</h3>
+          <div class="timebar"><i class="t1" style="width:17%"></i><i class="t2" style="width:42%"></i><i class="t3" style="width:25%"></i><i class="t4" style="width:16%"></i></div>
+          <div class="timelegend">
+            <span><i style="background:#b23a26"></i>Why 10</span>
+            <span><i style="background:#c9765f"></i>What 25</span>
+            <span><i style="background:#d8a58f"></i>Demo + How 15</span>
+            <span><i style="background:#8a7f72"></i>Q&amp;A 10</span>
+          </div>
+          <p class="small" style="margin-top:26px">45 分钟版：What 压到 18 分钟，删掉术语表逐条讲，Demo 保持 6–8 分钟。<br><br>本页可用 <kbd style="font:inherit;border:1px solid var(--line);border-radius:4px;padding:1px 5px">P</kbd> 打印为 PDF；HTML 为单文件，离线可开。</p>
+        </div>
+      </div>
+    </div>
+    <aside class="notes">
+      <p>60 分钟版本的时间分配；45 分钟版压缩 What、删掉术语表逐条讲，Demo 保持 6–8 分钟。材料可打印为 PDF，单文件离线可开。</p>
+    </aside>
+  </section>
+
+</main>
+
+<div id="hud">
+  <div class="left"><span class="chip" id="section-label">开场</span></div>
+  <div class="right">
+    <span class="chip" id="timer" title="计时：T 暂停 / 继续">00:00</span>
+    <span class="chip" id="counter">1 / 25</span>
+    <button type="button" id="btn-prev" class="icon" aria-label="上一页">‹</button>
+    <button type="button" id="btn-next" class="icon" aria-label="下一页">›</button>
+    <button type="button" id="btn-ov" aria-label="总览">总览</button>
+    <button type="button" id="btn-notes" aria-label="演讲备注">备注</button>
+    <button type="button" id="btn-full" aria-label="全屏">全屏</button>
+    <button type="button" id="btn-help" class="icon" aria-label="快捷键帮助">?</button>
+  </div>
+</div>
+
+<div id="overview" hidden>
+  <h3>总览</h3>
+  <div id="overview-grid"></div>
+</div>
+
+<div id="help" hidden>
+  <div class="help-card">
+    <h3>演示快捷键</h3>
+    <p>点击空白处也可以翻到下一页。</p>
+    <table>
+      <tr><td>← → / Space</td><td>上一页 / 下一页</td></tr>
+      <tr><td>Home / End</td><td>第一页 / 最后一页</td></tr>
+      <tr><td>F</td><td>全屏</td></tr>
+      <tr><td>O</td><td>总览</td></tr>
+      <tr><td>N</td><td>演讲备注</td></tr>
+      <tr><td>T</td><td>计时暂停 / 继续</td></tr>
+      <tr><td>P</td><td>打印 / 导出 PDF</td></tr>
+      <tr><td>Esc</td><td>关闭浮层</td></tr>
+    </table>
+  </div>
+</div>
+
+<div id="notes" hidden>
+  <div class="notes-h"><b>演讲备注</b><span>N 关闭</span></div>
+  <div id="notes-body"></div>
+</div>
+
+<noscript><p style="padding:20px;font:16px/1.6 sans-serif;color:#fff">此演示需要 JavaScript 才能翻页；直接打印仍会输出全部页面。</p></noscript>
+
+<script>
+(function(){
+  "use strict";
+  var slides = Array.prototype.slice.call(document.querySelectorAll(".slide"));
+  var stage = document.getElementById("stage");
+  var progress = document.getElementById("progress");
+  var sectionLabel = document.getElementById("section-label");
+  var counter = document.getElementById("counter");
+  var timerEl = document.getElementById("timer");
+  var notes = document.getElementById("notes");
+  var notesBody = document.getElementById("notes-body");
+  var overview = document.getElementById("overview");
+  var overviewGrid = document.getElementById("overview-grid");
+  var help = document.getElementById("help");
+
+  var cur = 0;
+  var acc = 0, resumeAt = 0, running = false, started = false;
+  var hudTimer = null;
+
+  function fit(){
+    var s = Math.min(window.innerWidth / 1600, window.innerHeight / 900);
+    document.documentElement.style.setProperty("--scale", s.toFixed(4));
+  }
+  window.addEventListener("resize", fit);
+  fit();
+
+  function fmt(ms){
+    var t = Math.floor(ms / 1000);
+    var m = Math.floor(t / 60);
+    var s = t % 60;
+    return (m < 10 ? "0" : "") + m + ":" + (s < 10 ? "0" : "") + s;
+  }
+  function elapsed(){ return acc + (running ? Date.now() - resumeAt : 0); }
+  function paintTimer(){
+    timerEl.textContent = fmt(elapsed());
+    timerEl.classList.toggle("paused", started && !running);
+  }
+  setInterval(paintTimer, 250);
+
+  function startTimer(){
+    started = true;
+    if (!running){ running = true; resumeAt = Date.now(); }
+    paintTimer();
+  }
+  function toggleTimer(){
+    if (!started){ startTimer(); return; }
+    if (running){ acc += Date.now() - resumeAt; running = false; }
+    else { resumeAt = Date.now(); running = true; }
+    paintTimer();
+  }
+
+  function renderNotes(){
+    var n = slides[cur].querySelector(".notes");
+    notesBody.innerHTML = n ? n.innerHTML : '<p class="small">（本页没有备注）</p>';
+  }
+
+  function pulseHud(){
+    document.body.classList.add("hud");
+    clearTimeout(hudTimer);
+    hudTimer = setTimeout(function(){ document.body.classList.remove("hud"); }, 2600);
+  }
+
+  function show(i, opts){
+    opts = opts || {};
+    if (i < 0) i = 0;
+    if (i > slides.length - 1) i = slides.length - 1;
+    slides[cur].classList.remove("active");
+    cur = i;
+    slides[cur].classList.add("active");
+    progress.style.transform = "scaleX(" + ((cur + 1) / slides.length) + ")";
+    counter.textContent = (cur + 1) + " / " + slides.length;
+    sectionLabel.textContent = slides[cur].getAttribute("data-section") || "";
+    renderNotes();
+    if (opts.hash !== false){
+      try { history.replaceState(null, "", "#s" + (cur + 1)); } catch (e) {}
+    }
+    if (opts.user) startTimer();
+    pulseHud();
+  }
+  function next(){ show(cur + 1, {user:true}); }
+  function prev(){ show(cur - 1, {user:true}); }
+
+  function toggleFullscreen(){
+    if (!document.fullscreenElement){
+      var el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen().catch(function(){});
+    } else if (document.exitFullscreen){
+      document.exitFullscreen().catch(function(){});
+    }
+  }
+
+  function toggleOverview(){
+    overview.hidden = !overview.hidden;
+    pulseHud();
+  }
+  function toggleNotes(){
+    notes.hidden = !notes.hidden;
+    pulseHud();
+  }
+  function toggleHelp(){ help.hidden = !help.hidden; pulseHud(); }
+  function closeAll(){ overview.hidden = true; help.hidden = true; notes.hidden = true; }
+
+  slides.forEach(function(s, i){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "ov-card";
+    var num = document.createElement("span");
+    num.className = "ov-num";
+    num.textContent = String(i + 1).padStart(2, "0");
+    var title = document.createElement("span");
+    title.className = "ov-title";
+    title.textContent = s.getAttribute("data-title") || "";
+    var sec = document.createElement("span");
+    sec.className = "ov-sec";
+    sec.textContent = s.getAttribute("data-section") || "";
+    b.appendChild(num); b.appendChild(title); b.appendChild(sec);
+    b.addEventListener("click", function(){ closeAll(); show(i, {user:true}); });
+    overviewGrid.appendChild(b);
+  });
+
+  document.getElementById("btn-prev").addEventListener("click", function(){ prev(); this.blur(); });
+  document.getElementById("btn-next").addEventListener("click", function(){ next(); this.blur(); });
+  document.getElementById("btn-ov").addEventListener("click", function(){ toggleOverview(); this.blur(); });
+  document.getElementById("btn-notes").addEventListener("click", function(){ toggleNotes(); this.blur(); });
+  document.getElementById("btn-full").addEventListener("click", function(){ toggleFullscreen(); this.blur(); });
+  document.getElementById("btn-help").addEventListener("click", function(){ toggleHelp(); this.blur(); });
+  timerEl.addEventListener("click", toggleTimer);
+  document.addEventListener("mousemove", pulseHud);
+
+  document.addEventListener("keydown", function(e){
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    var key = e.key;
+    if (key === "Escape"){ closeAll(); return; }
+    if (!overview.hidden || !help.hidden) return;
+    switch (key){
+      case "ArrowRight": case "ArrowDown": case "PageDown": case " ":
+        next(); e.preventDefault(); break;
+      case "ArrowLeft": case "ArrowUp": case "PageUp":
+        prev(); e.preventDefault(); break;
+      case "Home": show(0, {user:true}); e.preventDefault(); break;
+      case "End": show(slides.length - 1, {user:true}); e.preventDefault(); break;
+      case "f": case "F": toggleFullscreen(); break;
+      case "o": case "O": toggleOverview(); break;
+      case "n": case "N": toggleNotes(); break;
+      case "t": case "T": toggleTimer(); break;
+      case "p": case "P": closeAll(); window.print(); break;
+      case "?": toggleHelp(); break;
+    }
+  });
+
+  stage.addEventListener("click", function(e){
+    if (e.target.closest("button, a, #hud, #notes, #overview, #help")) return;
+    if (!overview.hidden || !help.hidden || !notes.hidden) return;
+    var sel = window.getSelection();
+    if (sel && !sel.isCollapsed) return;
+    next();
+  });
+
+  window.addEventListener("hashchange", function(){
+    var m = /^#s(\d+)$/.exec(location.hash);
+    if (m) show(parseInt(m[1], 10) - 1, {hash:false});
+  });
+
+  var m = /^#s(\d+)$/.exec(location.hash);
+  show(m ? parseInt(m[1], 10) - 1 : 0, {hash:false});
+  pulseHud();
+})();
+</script>
+</body>
+</html>
